@@ -1,0 +1,65 @@
+# Wind / PV / electricity-trading oriented variable subset for NOAA GFS 0.25°.
+# Reference an external source template by name (config/sources/gfs.yaml).
+#
+# Differences vs the AIFS job (config/jobs/aifs_wind_pv.yaml):
+#   * GFS shortNames are different (UGRD vs u, TMP vs t, DSWRF vs ssrd, ...).
+#   * GFS exposes 10m wind only; there is NO 100m wind.
+#   * Surface fields with a height attribute (10m wind, 2m temp/dewpoint) sit
+#     in levtype=hag ("height above ground") with the height in `levels`.
+#   * Mean sea level pressure and total cloud cover live in levtype=atm.
+source: gfs
+
+time:
+  # Same single/list/range syntax as AIFS — see README §4.2.
+  date: yesterday
+  cycle: 12
+  steps: all
+
+variables:
+  # 10 m wind, 2 m temperature/dewpoint  --- height above ground
+  - name: hag_wind_temp
+    levtype: hag
+    levels: ["2", "10"]
+    params:
+      - UGRD
+      - VGRD
+      - TMP
+      - DPT
+
+  # Surface pressure, radiation, precipitation
+  - name: surface_pressure_radiation_precip
+    levtype: sfc
+    params:
+      - PRES   # surface pressure
+      - DSWRF  # downward short-wave (W/m^2, time-averaged)
+      - DLWRF  # downward long-wave  (W/m^2, time-averaged)
+      - APCP   # accumulated precipitation
+      - GUST   # surface wind gust
+
+  # Mean sea level pressure + total cloud cover (column summaries)
+  - name: column_msl_cloud
+    levtype: atm
+    params:
+      - PRMSL  # mean sea level pressure
+      - TCDC   # total cloud cover (entire atmosphere)
+
+  # Pressure-level wind / temperature / humidity / geopotential height
+  - name: pressure_level_wind_thermo
+    levtype: pl
+    levels: ["925", "850", "500"]
+    params:
+      - UGRD
+      - VGRD
+      - TMP
+      - SPFH
+      - HGT
+
+download:
+  # Layout: examples_output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
+  # GFS upstream files have no extension, so we append .grib2 only on our copy.
+  output_dir: examples_output
+  workers: 6
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

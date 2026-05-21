@@ -1,0 +1,11 @@
+# IAP-CAS S2S sub-seasonal real-time forecast (FGOALS-f2-S2S).
+# Longest leadtime in the dataset (65 days) but smallest variable set;
+# no MSLP / soil / fluxes / CAPE / convective precip — see config/s2s_catalogue.yaml.
+# Forecast length: 0-1560h (65 days), weekly init (typ. Mon 00z), 4 ensemble members.
+# Access delay: 48 hours (registered users).
+type: s2s
+name: s2s-iap-cas
+description: IAP-CAS S2S 1.5° sub-seasonal forecast (65d, FGOALS-f2-S2S, ensemble of 4)
+collection: s2s-forecasts
+origin: iap_cas
+forecast_type: control_forecast

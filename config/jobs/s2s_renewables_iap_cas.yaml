@@ -1,0 +1,67 @@
+# Renewable-energy variable subset for IAP-CAS S2S (FGOALS-f2-S2S).
+# Per config/s2s_catalogue.yaml: max leadtime 1560h (65 days, longest of
+# the 5 curated centres), inst grid 6h, pressure grid 24h, weekly init
+# (typ. Mon 00z), ensemble 4.
+#
+# IAP-CAS publishes only ~20 single-level variables — no MSLP, no soil,
+# no surface fluxes, no CAPE, no convective precipitation. The job
+# substitutes `surface_pressure` for `mean_sea_level_pressure` and drops
+# the unsupported variables relative to the ECMWF/CMA template.
+#
+#   single_inst   ~50 MB  10u 10v sp + tp ssrd strd          261 step (6h * 65d)
+#   single_daily  ~12 MB  2t 2d tcc                           65 step (24h windows)
+#   pressure_low  ~12 MB  u v t z @ 925/1000 hPa              65 step (24h * 65d)
+#                                                            ──────
+#                                                            ~75 MB / init
+source: s2s_iap_cas
+
+time:
+  date: yesterday
+  cycle: 0
+  leadtime:
+    start: 0
+    end: 1560         # 65 days
+    step: 6
+
+groups:
+  - name: single_inst
+    level_type: single_level
+    leadtime_kind: instant
+    variables:
+      - 10_m_u_component_of_wind
+      - 10_m_v_component_of_wind
+      - surface_pressure                  # MSLP unavailable on IAP-CAS
+      - total_precipitation
+      - surface_solar_radiation_downwards
+      - surface_thermal_radiation_downwards
+
+  - name: single_daily
+    level_type: single_level
+    leadtime_kind: daily
+    leadtime:
+      start: 0
+      end: 1560
+      step: 24
+    variables:
+      - 2_m_temperature
+      - 2_m_dewpoint_temperature
+      - total_cloud_cover
+
+  - name: pressure_low
+    level_type: pressure
+    leadtime_kind: instant
+    leadtime:
+      start: 0
+      end: 1560
+      step: 24
+    levels: ["925", "1000"]
+    variables:
+      - u_component_of_wind
+      - v_component_of_wind
+      - temperature
+      - geopotential_height
+
+download:
+  output_dir: output
+  init_concurrency: 1
+  request_timeout_seconds: 7200

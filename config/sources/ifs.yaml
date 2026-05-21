@@ -1,0 +1,17 @@
+# ECMWF IFS HRES open-data, mirrored on Google Cloud Storage.
+# Adapter: src/climate_download/sources/aifs.py (suffix-swap URL, JSONL idx);
+# IFS shares the protocol with AIFS — only the {model}/{stream} path segments
+# differ, so the same Python adapter handles both via the @register('ifs') alias.
+#
+# Stream coverage:
+#   - 00z / 12z runs publish stream=oper, type=fc (this file).
+#   - 06z / 18z runs publish stream=scda, type=fc on a different URL —
+#     copy this file to ifs_scda.yaml and swap 'oper' -> 'scda' if needed.
+# Step coverage (oper): 0-144h by 3h, then 150-240h by 6h (≈ 63 steps).
+# URL placeholders: {date} {cycle:02d} {step} {suffix}
+type: ifs
+name: ifs-hres
+description: ECMWF IFS HRES 0.25° atmospheric forecast (oper/fc, 00z & 12z)
+url_template: >-
+  https://storage.googleapis.com/ecmwf-open-data/{date}/{cycle:02d}z/ifs/0p25/oper/{date}{cycle:02d}0000-{step}h-oper-fc.{suffix}
+supports_byte_range: true

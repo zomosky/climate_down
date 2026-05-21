@@ -1,0 +1,12 @@
+# NCEP CFSv2 S2S sub-seasonal real-time forecast.
+# Shortest of the 5 curated centres (44 days) but a full single-level variable
+# set comparable to ECMWF — see config/s2s_catalogue.yaml.
+# Forecast length: 0-1056h (44 days), daily init 00z, 16 ensemble members
+# (4 lagged inits per day × 4 members), no oceanic level_type.
+# Access delay: 48 hours (registered users).
+type: s2s
+name: s2s-ncep
+description: NCEP CFSv2 S2S 1.5° sub-seasonal forecast (44d, ensemble of 16)
+collection: s2s-forecasts
+origin: ncep
+forecast_type: control_forecast

@@ -1,0 +1,1097 @@
+{
+  "_meta": {
+    "source": "ECDS s2s-forecasts constraints endpoint",
+    "constraints_url": "https://object-store.os-api.cci2.ecmwf.int:443/cci2-prod-catalogue/resources/s2s-forecasts/constraints_359685220d295d1def042ba41752c2198252766d30fb6dcd1c54cbed8c049fa4.json",
+    "origins_covered": [
+      "cma",
+      "ecmwf",
+      "iap_cas",
+      "ncep",
+      "ukmo"
+    ],
+    "schema": "per origin -> per level_type -> {variables, levels, leadtime_inst, leadtime_daily, times, forecast_types}"
+  },
+  "origins": {
+    "cma": {
+      "isentropic": {
+        "variables": [
+          "potential_vorticity"
+        ],
+        "levels": [
+          "320_k"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1440,
+          "count": 61
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "oceanic": {
+        "variables": [
+          "depth_of_20_C_isotherm",
+          "mean_sea_water_potential_temperature_in_the_upper_300_m",
+          "mean_sea_water_practical_salinity_in_the_upper_300_m",
+          "ocean_mixed_layer_thickness_defined_by_sigma_theta_0_01_kg_m_3",
+          "sea_ice_thickness",
+          "sea_surface_height",
+          "sea_surface_pratical_salinity",
+          "u_component_of_surface_current",
+          "v_component_of_surface_current"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": null,
+          "max_hours": null,
+          "count": 0
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104",
+            "1104_1128",
+            "1128_1152",
+            "1152_1176",
+            "1176_1200",
+            "1200_1224",
+            "1224_1248",
+            "1248_1272",
+            "1272_1296",
+            "1296_1320",
+            "1320_1344",
+            "1344_1368",
+            "1368_1392",
+            "1392_1416",
+            "1416_1440"
+          ],
+          "max_hours": 1440,
+          "count": 60
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "pressure": {
+        "variables": [
+          "geopotential_height",
+          "specific_humidity",
+          "temperature",
+          "u_component_of_wind",
+          "v_component_of_wind",
+          "vertical_velocity"
+        ],
+        "levels": [
+          "10_hpa",
+          "50_hpa",
+          "100_hpa",
+          "200_hpa",
+          "300_hpa",
+          "500_hpa",
+          "700_hpa",
+          "850_hpa",
+          "925_hpa",
+          "1000_hpa"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1440,
+          "count": 61
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "single_level": {
+        "variables": [
+          "10_m_u_component_of_wind",
+          "10_m_v_component_of_wind",
+          "2_m_dewpoint_temperature",
+          "2_m_temperature",
+          "convective_available_potential_energy",
+          "convective_precipitation",
+          "eastward_turbulent_surface_stress",
+          "land_sea_mask",
+          "maximum_2_m_temperature_in_the_last_6_hours",
+          "mean_sea_level_pressure",
+          "minimum_2_m_temperature_in_the_last_6_hours",
+          "northward_turbulent_surface_stress",
+          "orography",
+          "sea_ice_area_fraction",
+          "sea_surface_temperature",
+          "skin_temperature",
+          "snow_albedo",
+          "snow_density",
+          "snow_depth_water_equivalent",
+          "snow_fall_water_equivalent",
+          "soil_moisture_top_100_cm",
+          "soil_moisture_top_20_cm",
+          "soil_temperature_top_100_cm",
+          "soil_temperature_top_20_cm",
+          "surface_latent_heat_flux",
+          "surface_net_solar_radiation",
+          "surface_net_thermal_radiation",
+          "surface_pressure",
+          "surface_runoff",
+          "surface_sensible_heat_flux",
+          "surface_solar_radiation_downwards",
+          "surface_thermal_radiation_downwards",
+          "top_net_thermal_radiation",
+          "total_cloud_cover",
+          "total_column_water",
+          "total_precipitation",
+          "water_runoff_and_drainage"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": 6,
+          "max_hours": 1440,
+          "count": 241
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104",
+            "1104_1128",
+            "1128_1152",
+            "1152_1176",
+            "1176_1200",
+            "1200_1224",
+            "1224_1248",
+            "1248_1272",
+            "1272_1296",
+            "1296_1320",
+            "1320_1344",
+            "1344_1368",
+            "1368_1392",
+            "1392_1416",
+            "1416_1440"
+          ],
+          "max_hours": 1440,
+          "count": 60
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      }
+    },
+    "ecmwf": {
+      "isentropic": {
+        "variables": [
+          "potential_vorticity"
+        ],
+        "levels": [
+          "320_k"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1104,
+          "count": 47
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "oceanic": {
+        "variables": [
+          "depth_of_20_C_isotherm",
+          "mean_sea_water_potential_temperature_in_the_upper_300_m",
+          "mean_sea_water_practical_salinity_in_the_upper_300_m",
+          "ocean_mixed_layer_thickness_defined_by_sigma_theta_0_01_kg_m_3",
+          "sea_ice_thickness",
+          "sea_surface_height",
+          "sea_surface_pratical_salinity",
+          "u_component_of_surface_current",
+          "v_component_of_surface_current"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": null,
+          "max_hours": null,
+          "count": 0
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104"
+          ],
+          "max_hours": 1104,
+          "count": 46
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "pressure": {
+        "variables": [
+          "geopotential_height",
+          "specific_humidity",
+          "temperature",
+          "u_component_of_wind",
+          "v_component_of_wind",
+          "vertical_velocity"
+        ],
+        "levels": [
+          "10_hpa",
+          "50_hpa",
+          "100_hpa",
+          "200_hpa",
+          "300_hpa",
+          "500_hpa",
+          "700_hpa",
+          "850_hpa",
+          "925_hpa",
+          "1000_hpa"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1104,
+          "count": 47
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "single_level": {
+        "variables": [
+          "10_m_u_component_of_wind",
+          "10_m_v_component_of_wind",
+          "2_m_dewpoint_temperature",
+          "2_m_temperature",
+          "convective_available_potential_energy",
+          "convective_precipitation",
+          "eastward_turbulent_surface_stress",
+          "land_sea_mask",
+          "maximum_2_m_temperature_in_the_last_6_hours",
+          "mean_sea_level_pressure",
+          "minimum_2_m_temperature_in_the_last_6_hours",
+          "northward_turbulent_surface_stress",
+          "orography",
+          "sea_ice_area_fraction",
+          "sea_surface_temperature",
+          "skin_temperature",
+          "snow_albedo",
+          "snow_density",
+          "snow_depth_water_equivalent",
+          "snow_fall_water_equivalent",
+          "soil_moisture_top_100_cm",
+          "soil_moisture_top_20_cm",
+          "soil_temperature_top_100_cm",
+          "soil_temperature_top_20_cm",
+          "soil_type",
+          "surface_latent_heat_flux",
+          "surface_net_solar_radiation",
+          "surface_net_thermal_radiation",
+          "surface_pressure",
+          "surface_runoff",
+          "surface_sensible_heat_flux",
+          "surface_solar_radiation_downwards",
+          "surface_thermal_radiation_downwards",
+          "top_net_thermal_radiation",
+          "total_cloud_cover",
+          "total_column_water",
+          "total_precipitation",
+          "water_runoff_and_drainage"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": 6,
+          "max_hours": 1104,
+          "count": 185
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104"
+          ],
+          "max_hours": 1104,
+          "count": 46
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      }
+    },
+    "iap_cas": {
+      "oceanic": {
+        "variables": [
+          "u_component_of_surface_current",
+          "v_component_of_surface_current"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": null,
+          "max_hours": null,
+          "count": 0
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104",
+            "1104_1128",
+            "1128_1152",
+            "1152_1176",
+            "1176_1200",
+            "1200_1224",
+            "1224_1248",
+            "1248_1272",
+            "1272_1296",
+            "1296_1320",
+            "1320_1344",
+            "1344_1368",
+            "1368_1392",
+            "1392_1416",
+            "1416_1440",
+            "1440_1464",
+            "1464_1488",
+            "1488_1512",
+            "1512_1536",
+            "1536_1560"
+          ],
+          "max_hours": 1560,
+          "count": 65
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "pressure": {
+        "variables": [
+          "geopotential_height",
+          "specific_humidity",
+          "temperature",
+          "u_component_of_wind",
+          "v_component_of_wind",
+          "vertical_velocity"
+        ],
+        "levels": [
+          "10_hpa",
+          "50_hpa",
+          "100_hpa",
+          "200_hpa",
+          "300_hpa",
+          "500_hpa",
+          "700_hpa",
+          "850_hpa",
+          "925_hpa",
+          "1000_hpa"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1560,
+          "count": 65
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "single_level": {
+        "variables": [
+          "10_m_u_component_of_wind",
+          "10_m_v_component_of_wind",
+          "2_m_dewpoint_temperature",
+          "2_m_temperature",
+          "land_sea_mask",
+          "maximum_2_m_temperature_in_the_last_6_hours",
+          "minimum_2_m_temperature_in_the_last_6_hours",
+          "orography",
+          "sea_ice_area_fraction",
+          "sea_surface_temperature",
+          "skin_temperature",
+          "snow_fall_water_equivalent",
+          "surface_net_solar_radiation",
+          "surface_net_thermal_radiation",
+          "surface_pressure",
+          "surface_solar_radiation_downwards",
+          "surface_thermal_radiation_downwards",
+          "top_net_thermal_radiation",
+          "total_cloud_cover",
+          "total_precipitation"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": 6,
+          "max_hours": 1560,
+          "count": 260
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104",
+            "1104_1128",
+            "1128_1152",
+            "1152_1176",
+            "1176_1200",
+            "1200_1224",
+            "1224_1248",
+            "1248_1272",
+            "1272_1296",
+            "1296_1320",
+            "1320_1344",
+            "1344_1368",
+            "1368_1392",
+            "1392_1416",
+            "1416_1440",
+            "1440_1464",
+            "1464_1488",
+            "1488_1512",
+            "1512_1536",
+            "1536_1560"
+          ],
+          "max_hours": 1560,
+          "count": 65
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      }
+    },
+    "ncep": {
+      "isentropic": {
+        "variables": [
+          "potential_vorticity"
+        ],
+        "levels": [
+          "320_k"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1056,
+          "count": 45
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "pressure": {
+        "variables": [
+          "geopotential_height",
+          "specific_humidity",
+          "temperature",
+          "u_component_of_wind",
+          "v_component_of_wind",
+          "vertical_velocity"
+        ],
+        "levels": [
+          "10_hpa",
+          "50_hpa",
+          "100_hpa",
+          "200_hpa",
+          "300_hpa",
+          "500_hpa",
+          "700_hpa",
+          "850_hpa",
+          "925_hpa",
+          "1000_hpa"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1056,
+          "count": 45
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "single_level": {
+        "variables": [
+          "10_m_u_component_of_wind",
+          "10_m_v_component_of_wind",
+          "2_m_dewpoint_temperature",
+          "2_m_temperature",
+          "convective_available_potential_energy",
+          "convective_precipitation",
+          "eastward_turbulent_surface_stress",
+          "land_sea_mask",
+          "maximum_2_m_temperature_in_the_last_6_hours",
+          "mean_sea_level_pressure",
+          "minimum_2_m_temperature_in_the_last_6_hours",
+          "northward_turbulent_surface_stress",
+          "orography",
+          "sea_ice_area_fraction",
+          "sea_surface_temperature",
+          "skin_temperature",
+          "snow_depth_water_equivalent",
+          "snow_fall_water_equivalent",
+          "soil_moisture_top_100_cm",
+          "soil_moisture_top_20_cm",
+          "soil_temperature_top_100_cm",
+          "soil_temperature_top_20_cm",
+          "soil_type",
+          "surface_latent_heat_flux",
+          "surface_net_solar_radiation",
+          "surface_net_thermal_radiation",
+          "surface_pressure",
+          "surface_runoff",
+          "surface_sensible_heat_flux",
+          "surface_solar_radiation_downwards",
+          "surface_thermal_radiation_downwards",
+          "top_net_thermal_radiation",
+          "total_cloud_cover",
+          "total_column_water",
+          "total_precipitation"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": 6,
+          "max_hours": 1056,
+          "count": 177
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056"
+          ],
+          "max_hours": 1056,
+          "count": 44
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      }
+    },
+    "ukmo": {
+      "pressure": {
+        "variables": [
+          "geopotential_height",
+          "specific_humidity",
+          "temperature",
+          "u_component_of_wind",
+          "v_component_of_wind",
+          "vertical_velocity"
+        ],
+        "levels": [
+          "10_hpa",
+          "50_hpa",
+          "100_hpa",
+          "200_hpa",
+          "300_hpa",
+          "500_hpa",
+          "700_hpa",
+          "850_hpa",
+          "925_hpa",
+          "1000_hpa"
+        ],
+        "leadtime_inst": {
+          "step_hours": 24,
+          "max_hours": 1440,
+          "count": 61
+        },
+        "leadtime_daily": {
+          "windows": [],
+          "max_hours": null,
+          "count": 0
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      },
+      "single_level": {
+        "variables": [
+          "10_m_u_component_of_wind",
+          "10_m_v_component_of_wind",
+          "2_m_dewpoint_temperature",
+          "2_m_temperature",
+          "convective_precipitation",
+          "land_sea_mask",
+          "maximum_2_m_temperature_in_the_last_6_hours",
+          "minimum_2_m_temperature_in_the_last_6_hours",
+          "orography",
+          "sea_ice_area_fraction",
+          "sea_surface_temperature",
+          "skin_temperature",
+          "snow_fall_water_equivalent",
+          "surface_net_solar_radiation",
+          "surface_net_thermal_radiation",
+          "surface_pressure",
+          "surface_solar_radiation_downwards",
+          "surface_thermal_radiation_downwards",
+          "top_net_thermal_radiation",
+          "total_cloud_cover",
+          "total_precipitation"
+        ],
+        "levels": [],
+        "leadtime_inst": {
+          "step_hours": 6,
+          "max_hours": 1440,
+          "count": 241
+        },
+        "leadtime_daily": {
+          "windows": [
+            "0_24",
+            "24_48",
+            "48_72",
+            "72_96",
+            "96_120",
+            "120_144",
+            "144_168",
+            "168_192",
+            "192_216",
+            "216_240",
+            "240_264",
+            "264_288",
+            "288_312",
+            "312_336",
+            "336_360",
+            "360_384",
+            "384_408",
+            "408_432",
+            "432_456",
+            "456_480",
+            "480_504",
+            "504_528",
+            "528_552",
+            "552_576",
+            "576_600",
+            "600_624",
+            "624_648",
+            "648_672",
+            "672_696",
+            "696_720",
+            "720_744",
+            "744_768",
+            "768_792",
+            "792_816",
+            "816_840",
+            "840_864",
+            "864_888",
+            "888_912",
+            "912_936",
+            "936_960",
+            "960_984",
+            "984_1008",
+            "1008_1032",
+            "1032_1056",
+            "1056_1080",
+            "1080_1104",
+            "1104_1128",
+            "1128_1152",
+            "1152_1176",
+            "1176_1200",
+            "1200_1224",
+            "1224_1248",
+            "1248_1272",
+            "1272_1296",
+            "1296_1320",
+            "1320_1344",
+            "1344_1368",
+            "1368_1392",
+            "1392_1416",
+            "1416_1440"
+          ],
+          "max_hours": 1440,
+          "count": 60
+        },
+        "times": [
+          "00:00"
+        ],
+        "forecast_types": [
+          "control_forecast",
+          "perturbed_forecast"
+        ]
+      }
+    }
+  }
+}

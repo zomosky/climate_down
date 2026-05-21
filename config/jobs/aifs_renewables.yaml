@@ -1,0 +1,87 @@
+# Renewable-energy / power-trading variable subset for ECMWF AIFS-Single 0.25°.
+# Mirrors config/jobs/gfs_renewables.yaml group-for-group, gracefully degrading
+# where AIFS doesn't publish an equivalent field:
+#   * 80 m height fields absent (AIFS publishes 10 m + 100 m only)
+#   * RH / SPFH / DPT not native — only 2m dewpoint (2d) on surface
+#   * Cloud-layer slabs published as sfc shortnames (lcc/mcc/hcc) instead of "other"
+#   * Surface radiation: only downward fluxes (ssrd/strd); no upward components
+#   * PWAT replaced by tcw (total column water)
+# References config/sources/aifs.yaml (single template with {suffix} swap).
+
+source: aifs
+
+time:
+  date: yesterday
+  cycle: [12]
+  steps: all
+
+variables:
+  # ── Hub-height + reference winds ──────────────────────────────
+  - name: wind_100m
+    levtype: sfc
+    params: [100u, 100v]
+
+  - name: wind_10m
+    levtype: sfc
+    params: [10u, 10v]
+
+  # ── 850 hPa synoptic flow (no RH on AIFS pl — use q instead) ──
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [u, v, t, q, z]
+
+  # ── Temperature: 2 m + skin ───────────────────────────────────
+  - name: temp_2m
+    levtype: sfc
+    params: [2t]
+
+  - name: temp_skin
+    levtype: sfc
+    params: [skt]
+
+  # ── Humidity: only 2 m dewpoint exposed on AIFS surface ───────
+  - name: humidity_2m
+    levtype: sfc
+    params: [2d]
+
+  # ── Surface + MSL pressure ────────────────────────────────────
+  - name: pressure_sfc
+    levtype: sfc
+    params: [sp]
+
+  - name: pressure_msl
+    levtype: sfc
+    params: [msl]
+
+  # ── Solar / longwave radiation (downward only) ────────────────
+  - name: radiation_surface
+    levtype: sfc
+    params: [ssrd, strd]
+
+  # ── Cloud cover (total + layer slabs) ─────────────────────────
+  - name: cloud_total
+    levtype: sfc
+    params: [tcc]
+
+  - name: cloud_layers
+    levtype: sfc
+    params: [lcc, mcc, hcc]
+
+  # ── Precipitation + total column water (hydro / ramps) ────────
+  - name: precip
+    levtype: sfc
+    params: [tp, cp, sf]
+
+  - name: tcw_column
+    levtype: sfc
+    params: [tcw]
+
+download:
+  # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
+  output_dir: output
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

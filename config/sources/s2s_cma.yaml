@@ -1,0 +1,11 @@
+# CMA (China Meteorological Administration) S2S sub-seasonal real-time forecast.
+# Available on the same ECDS s2s-forecasts dataset as ECMWF.
+# Forecast length: 0-1440h (60 days), init daily, 4 ensemble members (1 cf + 3 pf).
+# Variable subset is similar to ECMWF — see capability probe in /tmp/_s2s_capability.json.
+# Access delay: 48 hours (registered users).
+type: s2s
+name: s2s-cma
+description: CMA S2S 1.5° sub-seasonal forecast (60d, ensemble of 4)
+collection: s2s-forecasts
+origin: cma
+forecast_type: control_forecast

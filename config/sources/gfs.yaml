@@ -1,0 +1,13 @@
+# NOAA GFS 0.25° (atmos) public mirror on AWS S3 (noaa-gfs-bdp-pds bucket).
+# Adapter: src/climate_download/sources/gfs.py (split URL templates, wgrib2 idx).
+# The sidecar (.idx) and the GRIB file have unrelated suffixes, so this
+# source uses split URL templates rather than the suffix-swap form.
+# The forecast hour is zero-padded to three digits (f000, f006, ..., f384).
+type: gfs
+name: gfs-0p25
+description: NOAA GFS 0.25° atmos forecast (NCEP), wgrib2 .idx sidecar
+index_url_template: >-
+  https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{date}/{cycle:02d}/atmos/gfs.t{cycle:02d}z.pgrb2.0p25.f{step:03d}.idx
+data_url_template: >-
+  https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs.{date}/{cycle:02d}/atmos/gfs.t{cycle:02d}z.pgrb2.0p25.f{step:03d}
+supports_byte_range: true

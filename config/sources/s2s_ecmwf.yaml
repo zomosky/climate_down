@@ -1,0 +1,11 @@
+# ECMWF S2S sub-seasonal real-time forecast on the ECMWF Data Store (ECDS).
+# Adapter: src/climate_download/s2s/ (async cdsapi submit-poll-download).
+# Forecast length: 0-1104h (46 days), init Mon/Thu, 51 ensemble members.
+# Access delay: 48 hours (registered users).
+# Credentials: ~/.ecdsapirc (yaml `url:` + `key:`).
+type: s2s
+name: s2s-ecmwf
+description: ECMWF S2S 1.5° sub-seasonal forecast (46d, ensemble of 51)
+collection: s2s-forecasts
+origin: ecmwf
+forecast_type: control_forecast

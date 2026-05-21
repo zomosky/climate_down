@@ -1,0 +1,46 @@
+# Renewable-energy variable subset for NOAA NWS GraphCast 0.25° (surface
+# product). GraphCast's sfc file publishes only 5 fields total — we take all
+# of them since each maps directly onto a renewables-relevant signal:
+#   * 10 m wind components  → wind reference height
+#   * 2 m temperature       → air-density / load
+#   * MSL pressure          → synoptic context
+#   * APCP                  → hydro / precip-driven ramp diagnostics
+# Companion to graphcast_pres_renewables.yaml (upper-air slice).
+
+source: graphcast_sfc
+
+time:
+  date: yesterday
+  cycle: [12]
+  steps: all
+
+variables:
+  # ── Reference 10 m wind ───────────────────────────────────────
+  - name: wind_10m
+    levtype: hag
+    params: [UGRD, VGRD]
+
+  # ── 2 m temperature ───────────────────────────────────────────
+  - name: temp_2m
+    levtype: hag
+    params: [TMP]
+
+  # ── Mean sea-level pressure ───────────────────────────────────
+  - name: pressure_msl
+    levtype: atm
+    params: [PRMSL]
+
+  # ── Accumulated precipitation (since cycle start) ─────────────
+  - name: precip
+    levtype: sfc
+    params: [APCP]
+
+download:
+  # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
+  # ``source`` here is the source `name` field, i.e. "graphcast-sfc".
+  output_dir: output
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

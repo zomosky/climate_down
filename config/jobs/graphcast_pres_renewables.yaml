@@ -1,0 +1,51 @@
+# Renewable-energy variable subset for NOAA NWS GraphCast 0.25° (pressure-level
+# product). GraphCast publishes only 6 params × 13 pressure levels on the
+# pres file: HGT, UGRD, VGRD, TMP, SPFH, VVEL — there are no native hub-height
+# winds or surface radiation. Pair this job with graphcast_sfc_renewables.yaml
+# (10 m wind, 2 m temp, MSL pressure, APCP) to cover the surface side.
+#
+# This config focuses on the synoptic / boundary-layer pressure-level slice
+# used for renewables (850 hPa flow + multi-level wind profile for shear).
+
+source: graphcast_pres
+
+time:
+  date: yesterday
+  cycle: [12]
+  steps: all
+
+variables:
+  # ── 850 hPa synoptic flow (UGRD/VGRD/TMP/SPFH/HGT) ────────────
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [UGRD, VGRD, TMP, SPFH, HGT]
+
+  # ── Boundary-layer wind profile (10 m proxy via 1000 hPa) ─────
+  # Useful for surface-layer scaling and offshore hub-height estimation.
+  - name: pl_1000
+    levtype: pl
+    levels: ["1000"]
+    params: [UGRD, VGRD, TMP, SPFH, HGT]
+
+  # ── Mid-tropospheric flow for ramp diagnostics ────────────────
+  - name: pl_500
+    levtype: pl
+    levels: ["500"]
+    params: [UGRD, VGRD, TMP, HGT]
+
+  # ── Vertical motion (convection / cloud development proxy) ────
+  - name: vvel_profile
+    levtype: pl
+    levels: ["500", "700", "850", "925"]
+    params: [VVEL]
+
+download:
+  # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
+  # ``source`` here is the source `name` field, i.e. "graphcast-pres".
+  output_dir: output
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

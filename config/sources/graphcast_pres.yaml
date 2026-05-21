@@ -1,0 +1,18 @@
+# NOAA NWS GraphCast / "aigfs" pressure-level product on AWS S3
+# (noaa-nws-graphcastgfs-pds bucket; AWS open-data registry id
+#  noaa-nws-graphcastgfs-pds, region us-east-1).
+# Adapter: src/climate_download/sources/gfs.py — same wgrib2-idx S3 protocol
+# as GFS, exposed under the @register('graphcast') type alias.
+#
+# Product split: the bucket publishes two GRIB files per (date, cycle, step):
+#   - aigfs.t{cc}z.pres.fXXX.grib2  (pressure-level fields, this file)
+#   - aigfs.t{cc}z.sfc.fXXX.grib2   (surface fields, see graphcast_sfc.yaml)
+# Step coverage: 0..384h by 6h (65 steps). Forecast hour zero-padded f000..f384.
+type: graphcast
+name: graphcast-pres
+description: NOAA NWS GraphCast (aigfs) 0.25° pressure-level fields
+index_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2.idx
+data_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2
+supports_byte_range: true

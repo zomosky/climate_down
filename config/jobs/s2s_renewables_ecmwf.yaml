@@ -1,0 +1,77 @@
+# Renewable-energy / power-trading variable subset for ECMWF S2S.
+# Per config/s2s_catalogue.yaml: max leadtime 1104h (46d), inst grid 6h,
+# pressure grid 24h, init Mon+Thu 00z, ensemble 51.
+#
+# Three groups = three cdsapi.retrieve calls per init, each producing one
+# multi-message GRIB under output/s2s-ecmwf/<date>/<cycle>z/<group>.grib2:
+#
+#   single_inst   ~38 MB  10u 10v msl + tp ssrd strd        185 step (6h * 46d)
+#   single_daily  ~12 MB  2t 2d total_cloud_cover            46 step (24h windows)
+#   pressure_low  ~10 MB  u v t z @ 925/1000 hPa             46 step (24h * 46d)
+#                                                            ──────
+#                                                            ~60 MB / init
+#
+# Note: due to the 48h access delay + Mon/Thu cadence, the default
+# `date: yesterday` may resolve to a date that is not an init day. Override
+# with `--date <YYYYMMDD>` to a Mon or Thu at least 48h old.
+source: s2s_ecmwf
+
+time:
+  date: yesterday
+  cycle: 0
+  leadtime:
+    start: 0
+    end: 1104     # 46 days
+    step: 6
+
+groups:
+  # ── Surface instantaneous + accumulated (10m wind, MSLP, precip, radiation) ──
+  - name: single_inst
+    level_type: single_level
+    leadtime_kind: instant
+    variables:
+      - 10_m_u_component_of_wind
+      - 10_m_v_component_of_wind
+      - mean_sea_level_pressure
+      - total_precipitation
+      - surface_solar_radiation_downwards
+      - surface_thermal_radiation_downwards
+
+  # ── Surface daily-averaged (2m temp/dewpoint, total cloud cover) ──
+  # leadtime grid for daily-averaged is `0_24`, `24_48`, ... so step=24 below
+  # gives 46 non-overlapping windows; the orchestrator stops at end-24 so the
+  # final window closes at exactly 1104h.
+  - name: single_daily
+    level_type: single_level
+    leadtime_kind: daily
+    leadtime:
+      start: 0
+      end: 1104
+      step: 24
+    variables:
+      - 2_m_temperature
+      - 2_m_dewpoint_temperature
+      - total_cloud_cover
+
+  # ── Lower-troposphere pressure levels (hub-height proxy + thermal flow) ──
+  # ECDS publishes ALL pressure-level data at 24h cadence (not 6h), so the
+  # group overrides the job-level leadtime to step=24.
+  - name: pressure_low
+    level_type: pressure
+    leadtime_kind: instant
+    leadtime:
+      start: 0
+      end: 1104
+      step: 24
+    levels: ["925", "1000"]
+    variables:
+      - u_component_of_wind
+      - v_component_of_wind
+      - temperature
+      - geopotential_height
+
+download:
+  # Layout: output/<source>/<date>/<cycle>z/<group>.grib2 (S2SDownloadConfig defaults).
+  output_dir: output
+  init_concurrency: 1     # ECDS shares one queue per token; serial inits perform better
+  request_timeout_seconds: 7200

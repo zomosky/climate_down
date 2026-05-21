@@ -1,0 +1,11 @@
+# UKMO GloSea6 S2S sub-seasonal real-time forecast.
+# Forecast length: 0-1440h (60 days), daily init 00z (lagged ensemble),
+# 7 members per init (1 cf + 6 pf), pressure + single_level only —
+# no MSLP / soil / fluxes / CAPE / convective precip on single_level.
+# Access delay: 48 hours (registered users).
+type: s2s
+name: s2s-ukmo
+description: UKMO GloSea6 S2S 1.5° sub-seasonal forecast (60d, ensemble of 7)
+collection: s2s-forecasts
+origin: ukmo
+forecast_type: control_forecast

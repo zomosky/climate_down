@@ -1,0 +1,117 @@
+# Renewable-energy / power-trading variable subset for NOAA GFS 0.25°.
+#
+# Curated for wind / PV / hydro short-term forecasting:
+#   * hub-height + reference winds (100m / 80m / 10m)
+#   * 850 hPa synoptic flow + boundary-layer state
+#   * temperature at multiple heights (gradient & air density)
+#   * humidity (RH, SPFH, DPT) for air-density / icing diagnostics
+#   * surface / MSL pressure for hydrostatic terms
+#   * solar radiation flux (DSWRF / USWRF / DLWRF / ULWRF) for PV output
+#   * cloud cover at multiple slabs (PV variability)
+#   * accumulated / instantaneous precipitation + PWAT for hydro & ramps
+#
+# References the external GFS source template (config/sources/gfs.yaml).
+# Pairs naturally with `steps: all` on a daily cron — see README §4.2.
+
+source: gfs
+
+time:
+  # Override on the CLI (--date 20260101 --cycle 0,12 --steps all) for
+  # backfills; the defaults below run a same-day 0/6 cycle smoke test.
+  date: yesterday
+  # cycle: [0, 12]
+  cycle: [12]
+  # `all` asks the GFS S3 LIST endpoint for every published forecast hour
+  # (~209 per init). Use an explicit range for cheaper experiments.
+  # steps: "0-24:6"
+  steps: all
+
+variables:
+  # ── Hub-height + reference winds ──────────────────────────────
+  - name: wind_100m
+    levtype: hag
+    levels: ["100"]
+    params: [UGRD, VGRD]
+
+  - name: wind_80m
+    levtype: hag
+    levels: ["80"]
+    params: [UGRD, VGRD]
+
+  - name: wind_10m
+    levtype: hag
+    levels: ["10"]
+    params: [UGRD, VGRD]
+
+  # ── 850 hPa synoptic flow & boundary-layer state ──────────────
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [UGRD, VGRD, TMP, RH, HGT]
+
+  # ── Temperature at multiple heights ───────────────────────────
+  # 2m / 80m / 100m above ground for gradient + air-density diagnostics.
+  - name: temp_hag
+    levtype: hag
+    levels: ["2", "80", "100"]
+    params: [TMP]
+
+  - name: temp_surface
+    levtype: sfc
+    params: [TMP]
+
+  # ── Humidity (RH, SPFH for ρ, DPT for icing/dew) ──────────────
+  - name: humidity_hag
+    levtype: hag
+    levels: ["2", "80"]
+    params: [RH, SPFH, DPT]
+
+  # ── Surface + 80m pressure + MSL ──────────────────────────────
+  - name: pressure_sfc
+    levtype: sfc
+    params: [PRES]
+
+  - name: pressure_hag
+    levtype: hag
+    levels: ["80"]
+    params: [PRES]
+
+  - name: pressure_msl
+    levtype: atm
+    params: [PRMSL]
+
+  # ── Solar radiation flux (PV) ─────────────────────────────────
+  # NOTE: DSWRF/USWRF/DLWRF/ULWRF are time-averaged fluxes published from
+  # f001 onward — the f000 analysis does NOT contain them.
+  - name: radiation_surface
+    levtype: sfc
+    params: [DSWRF, USWRF, DLWRF, ULWRF]
+
+  # ── Cloud cover (PV variability) ──────────────────────────────
+  - name: cloud_column
+    levtype: atm
+    params: [TCDC]
+
+  # Cloud-layer slabs sit at "low/middle/high cloud layer" which the
+  # wgrib2 idx parser classifies as levtype=other (see grib/index.py).
+  - name: cloud_layers
+    levtype: other
+    params: [LCDC, MCDC, HCDC]
+
+  # ── Precipitation + total precipitable water (hydro / ramps) ──
+  - name: precip_pwat
+    levtype: sfc
+    params: [APCP, PRATE]
+
+  - name: pwat_column
+    levtype: atm
+    params: [PWAT]
+
+download:
+  # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
+  output_dir: output
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

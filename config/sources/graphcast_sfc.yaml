@@ -1,0 +1,12 @@
+# NOAA NWS GraphCast / "aigfs" surface product on AWS S3.
+# Adapter: src/climate_download/sources/gfs.py via @register('graphcast').
+# Companion to graphcast_pres.yaml (pressure-level fields).
+# Step coverage: 0..384h by 6h (65 steps).
+type: graphcast
+name: graphcast-sfc
+description: NOAA NWS GraphCast (aigfs) 0.25° surface fields
+index_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.sfc.f{step:03d}.grib2.idx
+data_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.sfc.f{step:03d}.grib2
+supports_byte_range: true

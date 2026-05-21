@@ -1,0 +1,68 @@
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# --- Tooling caches ---------------------------------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# --- Virtual envs / uv ------------------------------------------------------
+.venv/
+venv/
+env/
+# Keep uv.lock tracked (reproducible installs); ignore only the per-host cache.
+.uv-cache/
+
+# --- Editors / IDE ----------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- OS ---------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# --- Logs / temp ------------------------------------------------------------
+*.log
+*.log.*
+*.tmp
+*.bak
+.cache/
+
+# --- Project data (heavy / regenerable) -------------------------------------
+# Downloaded GRIB subsets, manifests, run reports, plots — all reproducible
+# from config/jobs/*.yaml + `climate-download run`.
+output/
+examples_output/
+# eccodes / cfgrib sidecar caches (we already pass indexpath="" but stray ones happen)
+*.idx
+*.4f55a.idx
+
+# --- Credentials (NEVER commit) ---------------------------------------------
+# ECMWF MARS / Web API key file (must live in $HOME, not in the repo).
+.ecmwfapirc
+ecmwfapirc
+# Generic credential / dotenv patterns
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+.aws/
+.netrc
+PROJECT.md

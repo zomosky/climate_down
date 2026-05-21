@@ -1,0 +1,9 @@
+# ECMWF AIFS single-model open-data, mirrored on Google Cloud Storage.
+# Adapter: src/climate_download/sources/aifs.py (suffix-swap URL, JSONL idx).
+# URL placeholders: {date} {cycle:02d} {step} {suffix}
+type: aifs
+name: aifs-single
+description: ECMWF AIFS 0.25° single-model open-data forecast
+url_template: >-
+  https://storage.googleapis.com/ecmwf-open-data/{date}/{cycle:02d}z/aifs-single/0p25/oper/{date}{cycle:02d}0000-{step}h-oper-fc.{suffix}
+supports_byte_range: true

@@ -1,0 +1,14 @@
+# NOAA HRRR 3 km CONUS rapid-refresh, public S3 mirror (noaa-hrrr-bdp-pds).
+# Adapter: src/climate_download/sources/hrrr.py (split URL templates, wgrib2 idx).
+# Multiple product slices are published per cycle: wrfsfc (surface), wrfprs
+# (pressure levels), wrfnat (model levels), wrfsubh (sub-hourly). Switch the
+# slice by editing the basename in both URL templates below; the rest of the
+# pipeline does not need to know which slice is selected.
+type: hrrr
+name: hrrr-conus-sfc
+description: NOAA HRRR 3 km CONUS surface (wrfsfc), wgrib2 .idx sidecar
+index_url_template: >-
+  https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.{date}/conus/hrrr.t{cycle:02d}z.wrfsfcf{step:02d}.grib2.idx
+data_url_template: >-
+  https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.{date}/conus/hrrr.t{cycle:02d}z.wrfsfcf{step:02d}.grib2
+supports_byte_range: true
