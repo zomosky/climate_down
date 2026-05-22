@@ -66,3 +66,4 @@ secrets.json
 .aws/
 .netrc
 PROJECT.md
+logs/

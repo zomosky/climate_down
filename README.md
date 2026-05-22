@@ -685,6 +685,67 @@ uv run pytest tests/test_partial.py# byte-range 下载（用 respx mock httpx）
 
 测试默认 **不发真实网络请求**，CI 可直接跑。示例脚本（`examples/`）走真实 HTTP，不在 pytest 内。
 
+### 8.1 端到端冒烟测试：逐源验证下载链路
+
+以下命令覆盖所有内置源，统一测试日期 `20260101`、12z 起报、48h 时效（S2S 链路见说明），每条命令独立可运行，发真实 HTTP 请求。
+
+**byte-range 链路（`climate-download run`）**
+
+```bash
+# 1. ECMWF AIFS-Single 0.25°（GCS, JSONL .index）
+uv run climate-download run --config config/jobs/aifs_renewables.yaml \
+    --date 20260101 --cycle 12 --steps 0-12 --output-dir ./output
+
+# 2. ECMWF IFS-HRES 0.25°（GCS, JSONL .index）
+uv run climate-download run --config config/jobs/ifs_renewables.yaml \
+    --date 20260101 --cycle 12 --steps 0-12 --output-dir ./output
+
+# 3. NOAA GFS 0.25°（S3, wgrib2 .idx）
+uv run climate-download run --config config/jobs/gfs_renewables.yaml \
+    --date 20260101 --cycle 12 --steps 0-12 --output-dir ./output
+
+# 4. NOAA GraphCast GFS 压力层（S3, wgrib2 .idx）
+uv run climate-download run --config config/jobs/graphcast_pres_renewables.yaml \
+    --date 20260519 --cycle 12 --steps 0-12 --output-dir ./output
+
+# 5. NOAA GraphCast GFS 地面层（S3, wgrib2 .idx）
+uv run climate-download run --config config/jobs/graphcast_sfc_renewables.yaml \
+    --date 20260519 --cycle 12 --steps 0-12 --output-dir ./output
+```
+
+> HRRR（NOAA 3 km CONUS）暂无内置 job YAML；需先参照 §4.2 写一份后再运行。
+
+**S2S 次季节链路（`climate-download s2s`）**
+
+`climate-download s2s` 目前不支持 `--steps` 覆盖：48h 时效已包含在各 job YAML 的 `leadtime` 范围内，无需额外指定。各 S2S 中心均以 `00z` 起报（ECMWF 额外也有 `12z`），下列命令统一使用有效的 `--cycle 0`。
+
+```bash
+# 6. ECMWF IFS-ENS S2S（Mon/Thu 00z；20260101 = 周四 ✓）
+uv run climate-download s2s --config config/jobs/s2s_renewables_ecmwf.yaml \
+    --date 20260101 --cycle 0
+
+# 7. CMA BCC-CPSv3 S2S（daily 00z）
+uv run climate-download s2s --config config/jobs/s2s_renewables_cma.yaml \
+    --date 20260101 --cycle 0
+
+# 8. IAP-CAS FGOALS S2S（weekly Mon 00z；20260101 = 周四，改用最近的周一）
+uv run climate-download s2s --config config/jobs/s2s_renewables_iap_cas.yaml \
+    --date 20251229 --cycle 0
+
+# 9. NCEP CFSv2 S2S（daily 00z）
+uv run climate-download s2s --config config/jobs/s2s_renewables_ncep.yaml \
+    --date 20260101 --cycle 0
+
+# 10. UKMO GloSea6 S2S（daily 00z lagged；需单独 MARS 访问申请，见 §10.1）
+uv run climate-download s2s --config config/jobs/s2s_renewables_ukmo.yaml \
+    --date 20260101 --cycle 0
+```
+
+> **注意事项**
+> - 所有 S2S 中心有 ≥48h 数据发布延迟；目标日期距今不足 48h 时 ECDS 会返回空结果。
+> - ECMWF 若要测试 12z 起报，将最后两条命令中 `--cycle 0` 改为 `--cycle 12` 即可；CMA / IAP-CAS / NCEP / UKMO 仅发布 00z。
+> - 上述 10 条命令产物默认落在 `output/<源>/<日期>/<cycle>z/` 下，互不覆盖，可以串行或并行运行。
+
 ---
 
 ## 9. 常见问题
