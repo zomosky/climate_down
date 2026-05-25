@@ -11,7 +11,7 @@ source: ifs
 
 time:
   #date: yesterday
-  date: "20260202-20260310"
+  date: "20260310-20260410"
   cycle: [12]
   steps: all
 

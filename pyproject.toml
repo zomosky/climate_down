@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-climate-download = "climate_download.cli:main"
+climate_download = "climate_download.cli:main"
 
 [project.optional-dependencies]
 viz = [
