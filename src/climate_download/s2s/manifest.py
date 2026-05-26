@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from climate_download.s2s.config import S2SJobConfig
-from climate_download.s2s.jobs import S2SResult
+from climate_download.s2s.jobs import S2SFailure, S2SResult
 
 __all__ = ["build_s2s_manifest", "s2s_manifest_path", "write_s2s_manifest"]
 
@@ -46,16 +46,31 @@ def _group_summary(config: S2SJobConfig) -> list[dict[str, Any]]:
     ]
 
 
-def s2s_manifest_path(config: S2SJobConfig, results: Sequence[S2SResult]) -> Path:
-    """Resolve where the manifest for ``results`` should live."""
-    if not results:
-        raise ValueError("results must not be empty")
-    first = results[0]
+def s2s_manifest_path(
+    config: S2SJobConfig,
+    results: Sequence[S2SResult],
+    *,
+    failures: Sequence[S2SFailure] = (),
+) -> Path:
+    """Resolve where the manifest for one init should live.
+
+    Either ``results`` or ``failures`` (or both) must be non-empty; the
+    first available entry (results preferred) supplies the ``(date, cycle)``
+    used to derive the path.
+    """
+    if not results and not failures:
+        raise ValueError("results and failures must not both be empty")
+    if results:
+        first_date = results[0].date
+        first_cycle = results[0].cycle
+    else:
+        first_date = failures[0].date
+        first_cycle = failures[0].cycle
     base = config.download.output_dir / config.download.subdir_template.format(
-        source=config.source.name, date=first.date, cycle=first.cycle,
+        source=config.source.name, date=first_date, cycle=first_cycle,
     )
     return base / (
-        f"{first.date}_{first.cycle:02d}z_{config.source.name}.manifest.json"
+        f"{first_date}_{first_cycle:02d}z_{config.source.name}.manifest.json"
     )
 
 
@@ -64,20 +79,27 @@ def build_s2s_manifest(
     results: Iterable[S2SResult],
     *,
     completed_at: dt.datetime | None = None,
+    failures: Iterable[S2SFailure] = (),
 ) -> dict[str, Any]:
-    """Serialise a finished S2S init into a manifest dictionary."""
+    """Serialise a finished S2S init into a manifest dictionary.
+
+    ``failures`` (when supplied) populates a top-level ``failures: [...]``
+    array so downstream consumers can tell ``"group never attempted"`` apart
+    from ``"group attempted but errored"`` without reading the run report.
+    """
     items = list(results)
-    if not items:
-        raise ValueError("results must not be empty")
-    dates = {r.date for r in items}
-    cycles = {r.cycle for r in items}
+    fail_items = list(failures)
+    if not items and not fail_items:
+        raise ValueError("results and failures must not both be empty")
+    dates = {r.date for r in items} | {f.date for f in fail_items}
+    cycles = {r.cycle for r in items} | {f.cycle for f in fail_items}
     if len(dates) != 1 or len(cycles) != 1:
         raise ValueError(
             f"manifest expects single (date, cycle); "
             f"got dates={dates} cycles={cycles}"
         )
-    date = items[0].date
-    cycle = items[0].cycle
+    date = next(iter(dates))
+    cycle = next(iter(cycles))
     init_time = (
         dt.datetime.strptime(date, "%Y%m%d")
         .replace(hour=cycle, tzinfo=dt.UTC)
@@ -100,6 +122,10 @@ def build_s2s_manifest(
             }
         )
 
+    failure_entries = [
+        {"group": f.group, "phase": f.phase, "error": f.error}
+        for f in sorted(fail_items, key=lambda f: (f.group is None, f.group or ""))
+    ]
     return {
         "schema_version": _SCHEMA_VERSION,
         "kind": "s2s",
@@ -121,6 +147,7 @@ def build_s2s_manifest(
             "request_timeout_seconds": config.download.request_timeout_seconds,
         },
         "files": files,
+        "failures": failure_entries,
     }
 
 
@@ -129,10 +156,13 @@ def write_s2s_manifest(
     results: Sequence[S2SResult],
     *,
     completed_at: dt.datetime | None = None,
+    failures: Sequence[S2SFailure] = (),
 ) -> Path:
     """Write the manifest atomically and return its path."""
-    payload = build_s2s_manifest(config, results, completed_at=completed_at)
-    out = s2s_manifest_path(config, results)
+    payload = build_s2s_manifest(
+        config, results, completed_at=completed_at, failures=failures,
+    )
+    out = s2s_manifest_path(config, results, failures=failures)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as fh:

@@ -231,11 +231,31 @@ def _run_one_group(
     )
     if _resume_check(out):
         size = out.stat().st_size
+        # File already valid on disk — skip the retrieve, but rebuild the
+        # MARS request locally (no network) so the resumed S2SResult /
+        # manifest carry the request payload and on-disk size instead of
+        # placeholder zeros. If request construction itself fails (e.g.
+        # leadtime range yields zero values for this group) we keep the
+        # valid file and fall back to an empty request with a warning.
+        try:
+            req = build_retrieve_request(
+                source, group, date=date, cycle=cycle,
+                default_leadtime=default_leadtime,
+            )
+        except Exception as exc:
+            _log.warning(
+                "group_resume_request_unavailable",
+                date=date, cycle=cycle, group=group.name, path=str(out),
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            req = {}
         _log.info("group_skipped", date=date, cycle=cycle, group=group.name,
-                  path=str(out), reason="existing valid GRIB")
+                  path=str(out), reason="existing valid GRIB",
+                  size_bytes=size)
         return S2SResult(
             date=date, cycle=cycle, group=group.name, output_path=out,
-            bytes_downloaded=0, elapsed_seconds=0.0, request={}, resumed=True,
+            bytes_downloaded=size, elapsed_seconds=0.0, request=req,
+            resumed=True,
         )
     if out.exists():
         _log.warning("group_resume_corrupt", path=str(out),
@@ -315,11 +335,15 @@ def _run_init(
             if on_group_done is not None:
                 on_group_done()
 
-    if write_manifest and results:
+    if write_manifest and (results or failures):
+        # Failures are folded into the manifest so restorage can distinguish
+        # "group attempted but errored" from "group never attempted"
+        # (absent from both lists) without reading the run report.
         from climate_download.s2s.manifest import write_s2s_manifest
         try:
-            path = write_s2s_manifest(config, results)
-            _log.info("manifest_written", path=str(path), groups=len(results))
+            path = write_s2s_manifest(config, results, failures=failures)
+            _log.info("manifest_written", path=str(path),
+                      groups=len(results), failures=len(failures))
         except Exception as exc:
             _log.exception("manifest_failed", date=date, cycle=cycle)
             failures.append(S2SFailure(

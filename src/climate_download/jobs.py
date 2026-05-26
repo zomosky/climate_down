@@ -196,14 +196,41 @@ def _run_one_step(
         download, source_name=source.name, date=date, cycle=cycle, step=step,
     )
     if _resume_check(out):
-        _log.info("step_skipped", date=date, cycle=cycle, step=step,
-                  path=str(out), reason="existing valid GRIB")
         size = out.stat().st_size
+        # File already valid on disk — skip the byte-range download, but
+        # still pull the sidecar so the resulting JobResult / manifest carry
+        # the real upstream metadata (records_total / bytes_total / breakdown)
+        # instead of placeholder zeros. ``bytes_downloaded`` is set to the
+        # on-disk size so ``manifest.size_bytes`` matches the actual file.
+        # If the index fetch itself fails we keep the file (it is valid) and
+        # fall back to zero-filled metadata with a warning.
+        try:
+            records = source.fetch_records(
+                client, date=date, cycle=cycle, step=step,
+            )
+            selected, breakdown = select_records(records, variables)
+            bytes_total = sum(r.length for r in records)
+            records_total = len(records)
+            records_selected = len(selected)
+        except Exception as exc:
+            _log.warning(
+                "step_resume_index_unavailable",
+                date=date, cycle=cycle, step=step, path=str(out),
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            bytes_total = size
+            records_total = 0
+            records_selected = 0
+            breakdown = {}
+        _log.info("step_skipped", date=date, cycle=cycle, step=step,
+                  path=str(out), reason="existing valid GRIB",
+                  records_total=records_total,
+                  records_selected=records_selected)
         return JobResult(
             date=date, cycle=cycle, step=step, output_path=out,
-            bytes_total=size, bytes_downloaded=0,
-            records_total=0, records_selected=0,
-            http_requests=0, selected_breakdown={}, resumed=True,
+            bytes_total=bytes_total, bytes_downloaded=size,
+            records_total=records_total, records_selected=records_selected,
+            http_requests=0, selected_breakdown=breakdown, resumed=True,
         )
     if out.exists():
         _log.warning("step_resume_corrupt", path=str(out),
@@ -396,12 +423,16 @@ def _run_init(
         ))
         return results, failures
 
-    if write_manifest and results:
+    if write_manifest and (results or failures):
         # Local import keeps the manifest module out of the import cycle.
+        # Failures are included so the manifest itself signals which steps
+        # were attempted and errored — restorage can then distinguish that
+        # from "step never attempted" (entry absent from both lists).
         from climate_download.manifest import write_manifest as _write
         try:
-            path = _write(config, results)
-            _log.info("manifest_written", path=str(path), files=len(results))
+            path = _write(config, results, failures=failures)
+            _log.info("manifest_written", path=str(path),
+                      files=len(results), failures=len(failures))
         except Exception as exc:
             _log.exception("manifest_failed", date=date, cycle=cycle)
             failures.append(JobFailure(

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from climate_download.config import JobConfig, VariableGroup
-from climate_download.jobs import JobResult
+from climate_download.jobs import JobFailure, JobResult
 
 __all__ = ["build_manifest", "manifest_path", "write_manifest"]
 
@@ -46,25 +46,39 @@ def _variable_summary(groups: Sequence[VariableGroup]) -> list[dict[str, Any]]:
     ]
 
 
-def manifest_path(config: JobConfig, results: Sequence[JobResult]) -> Path:
-    """Resolve where the manifest for ``results`` should live.
+def manifest_path(
+    config: JobConfig,
+    results: Sequence[JobResult],
+    *,
+    failures: Sequence[JobFailure] = (),
+) -> Path:
+    """Resolve where the manifest for one init should live.
 
-    All results are expected to share ``(date, cycle)``; we use the first
-    entry to derive the filename. When ``download.subdir_template`` is set,
-    the manifest lands in the same per-init subdirectory as the GRIB files
-    so downstream sensors can poll a single tree.
+    All ``results`` and ``failures`` are expected to share ``(date, cycle)``;
+    the first available entry (results preferred) derives the filename. When
+    ``download.subdir_template`` is set, the manifest lands in the same
+    per-init subdirectory as the GRIB files so downstream sensors can poll a
+    single tree. ``step`` defaults to ``0`` when only init-scope failures
+    exist, which matters only for templates that reference ``{step}``.
     """
-    if not results:
-        raise ValueError("results must not be empty")
-    first = results[0]
+    if not results and not failures:
+        raise ValueError("results and failures must not both be empty")
+    if results:
+        first_date = results[0].date
+        first_cycle = results[0].cycle
+        first_step = results[0].step
+    else:
+        first_date = failures[0].date
+        first_cycle = failures[0].cycle
+        first_step = failures[0].step if failures[0].step is not None else 0
     base = config.download.output_dir
     if config.download.subdir_template:
         base = base / config.download.subdir_template.format(
             source=config.source.name,
-            date=first.date, cycle=first.cycle, step=first.step,
+            date=first_date, cycle=first_cycle, step=first_step,
         )
     return base / (
-        f"{first.date}_{first.cycle:02d}z_{config.source.name}.manifest.json"
+        f"{first_date}_{first_cycle:02d}z_{config.source.name}.manifest.json"
     )
 
 
@@ -73,19 +87,26 @@ def build_manifest(
     results: Iterable[JobResult],
     *,
     completed_at: dt.datetime | None = None,
+    failures: Iterable[JobFailure] = (),
 ) -> dict[str, Any]:
-    """Serialise a finished job into a manifest dictionary."""
+    """Serialise a finished job into a manifest dictionary.
+
+    ``failures`` (when supplied) populates a top-level ``failures: [...]``
+    array so a downstream consumer can tell ``"step never attempted"`` apart
+    from ``"step attempted but errored"`` without reading the run report.
+    """
     items = list(results)
-    if not items:
-        raise ValueError("results must not be empty")
-    dates = {r.date for r in items}
-    cycles = {r.cycle for r in items}
+    fail_items = list(failures)
+    if not items and not fail_items:
+        raise ValueError("results and failures must not both be empty")
+    dates = {r.date for r in items} | {f.date for f in fail_items}
+    cycles = {r.cycle for r in items} | {f.cycle for f in fail_items}
     if len(dates) != 1 or len(cycles) != 1:
         raise ValueError(
             f"manifest expects single (date, cycle); got dates={dates} cycles={cycles}"
         )
-    date = items[0].date
-    cycle = items[0].cycle
+    date = next(iter(dates))
+    cycle = next(iter(cycles))
     init_time = (
         dt.datetime.strptime(date, "%Y%m%d")
         .replace(hour=cycle, tzinfo=dt.UTC)
@@ -109,6 +130,10 @@ def build_manifest(
             }
         )
 
+    failure_entries = [
+        {"step": f.step, "phase": f.phase, "error": f.error}
+        for f in sorted(fail_items, key=lambda f: (f.step is None, f.step or 0))
+    ]
     return {
         "schema_version": _SCHEMA_VERSION,
         "source": {
@@ -128,6 +153,7 @@ def build_manifest(
             "init_concurrency": config.download.init_concurrency,
         },
         "files": files,
+        "failures": failure_entries,
     }
 
 
@@ -136,10 +162,13 @@ def write_manifest(
     results: Sequence[JobResult],
     *,
     completed_at: dt.datetime | None = None,
+    failures: Sequence[JobFailure] = (),
 ) -> Path:
     """Write the manifest atomically and return its path."""
-    payload = build_manifest(config, results, completed_at=completed_at)
-    out = manifest_path(config, results)
+    payload = build_manifest(
+        config, results, completed_at=completed_at, failures=failures,
+    )
+    out = manifest_path(config, results, failures=failures)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as fh:
