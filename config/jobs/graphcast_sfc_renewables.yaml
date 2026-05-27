@@ -10,7 +10,8 @@
 source: graphcast_sfc
 
 time:
-  date: yesterday
+  #date: yesterday
+  date: "20260101-20260201"
   cycle: [12]
   steps: all
 
@@ -38,7 +39,8 @@ variables:
 download:
   # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
   # ``source`` here is the source `name` field, i.e. "graphcast-sfc".
-  output_dir: output
+  #output_dir: output
+  output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
   workers: 8
   gap_tolerance: 0
   timeout_seconds: 120

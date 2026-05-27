@@ -8,9 +8,24 @@
 #   - aigfs.t{cc}z.pres.fXXX.grib2  (pressure-level fields, this file)
 #   - aigfs.t{cc}z.sfc.fXXX.grib2   (surface fields, see graphcast_sfc.yaml)
 # Step coverage: 0..384h by 6h (65 steps). Forecast hour zero-padded f000..f384.
+#
+# ── URL 说明 ────────────────────────────────────────────────────────────────
+# 同一个 S3 桶 (noaa-nws-graphcastgfs-pds) 存在两套路径，覆盖不同时间段：
+#
+#   [近期，约 40 天滚动] aigfs.{date}/{cycle}/model/atmos/grib2/   ← 本配置
+#     直接来自 NCEP NOMADS，最新可达今天，40 天后自动删除。
+#
+#   [长期归档，2026-04-19+] graphcastgfs.{date}/{cycle}/forecasts_13_levels/
+#     AIGFS 数据经 ~21 天延迟后归档至此，永久保留，文件格式与变量完全一致。
+#     历史下载（40 天以上）请换用以下模板：
+#       index: https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2.idx
+#       data:  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2
+#
+#   [更早历史，2024-02-05 ~ 2026-04-18] graphcast_history.yaml
+#     EAGLE SOLO v1 时期，pres/sfc 合并为单文件，格式不同。
 type: graphcast
 name: graphcast-pres
-description: NOAA NWS GraphCast (aigfs) 0.25° pressure-level fields
+description: NOAA NWS AIGFS 0.25° pressure-level fields — recent rolling (~40 days)
 index_url_template: >-
   https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2.idx
 data_url_template: >-

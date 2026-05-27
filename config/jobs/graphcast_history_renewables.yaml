@@ -1,0 +1,70 @@
+# Renewable-energy variable subset for NOAA NWS GraphCast 0.25° early
+# archive (2024-02-05 ~ 2026-04-18). In this period pres and sfc fields are
+# merged into a single pgrb2 file per (date, cycle, step), so this job
+# combines the variable groups of graphcast_pres_renewables.yaml and
+# graphcast_sfc_renewables.yaml into one config.
+#
+# For dates >= 2026-04-19 use graphcast_pres_renewables.yaml /
+# graphcast_sfc_renewables.yaml instead (pres/sfc are split).
+
+source: graphcast_history
+
+time:
+  date: "20260101-20260131"
+  cycle: [12]
+  steps: all
+
+variables:
+  # ── 850 hPa synoptic flow ─────────────────────────────────────
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [UGRD, VGRD, TMP, SPFH, HGT]
+
+  # ── Boundary-layer wind profile (10 m proxy via 1000 hPa) ─────
+  - name: pl_1000
+    levtype: pl
+    levels: ["1000"]
+    params: [UGRD, VGRD, TMP, SPFH, HGT]
+
+  # ── Mid-tropospheric flow for ramp diagnostics ────────────────
+  - name: pl_500
+    levtype: pl
+    levels: ["500"]
+    params: [UGRD, VGRD, TMP, HGT]
+
+  # ── Vertical motion (convection / cloud development proxy) ────
+  - name: vvel_profile
+    levtype: pl
+    levels: ["500", "700", "850", "925"]
+    params: [VVEL]
+
+  # ── Reference 10 m wind ───────────────────────────────────────
+  - name: wind_10m
+    levtype: hag
+    params: [UGRD, VGRD]
+
+  # ── 2 m temperature ───────────────────────────────────────────
+  - name: temp_2m
+    levtype: hag
+    params: [TMP]
+
+  # ── Mean sea-level pressure ───────────────────────────────────
+  - name: pressure_msl
+    levtype: atm
+    params: [PRMSL]
+
+  # ── Accumulated precipitation (since cycle start) ─────────────
+  - name: precip
+    levtype: sfc
+    params: [APCP]
+
+download:
+  # Output layout: <output_dir>/<source-name>/<date>/<cycle>z/f<step>.subset.grib2
+  # ``source-name`` here = "graphcast-history" (from graphcast_history.yaml).
+  output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

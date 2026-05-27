@@ -1,0 +1,26 @@
+# NOAA NWS GraphCast — 早期历史合并格式（2024-02-05 ~ 2026-04-18）
+# (noaa-nws-graphcastgfs-pds bucket, graphcastgfs.{date}/ prefix).
+# Adapter: src/climate_download/sources/gfs.py via @register('graphcast').
+#
+# ── 与近期格式的区别 ───────────────────────────────────────────────────────────
+# 2026-04-19 之后：pres 和 sfc 拆分为两个文件（用 graphcast_pres.yaml / graphcast_sfc.yaml）
+# 2024-02-05 ~ 2026-04-18：所有层次合并在单个文件，无 pres/sfc 之分（本配置）
+#
+# 文件名格式：graphcastgfs.t{cc}z.pgrb2.0p25.f{step:03d}（无扩展名）
+# 配套 .idx 文件：graphcastgfs.t{cc}z.pgrb2.0p25.f{step:03d}.idx
+#
+# ── 注意：.idx 文件缺失的问题 ─────────────────────────────────────────────────
+# 经验证，2025 年中期及以后的 pgrb2 文件均有 .idx sidecar，可正常使用。
+# 2024 年的部分早期数据（如 2024-02-05）.idx 文件不存在，fetch_records 会返回
+# 404 错误。如需访问这些极早期数据，需要覆写 fetch_records 逻辑做全文件下载。
+#
+# ── Step 说明 ─────────────────────────────────────────────────────────────────
+# Step coverage: 0..384h by 6h. f000 开始（步长零填充为三位，如 f006）。
+type: graphcast
+name: graphcast-history
+description: NOAA NWS GraphCast 0.25° merged (pres+sfc) — early archive (2024-02-05 ~ 2026-04-18)
+index_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/graphcastgfs.t{cycle:02d}z.pgrb2.0p25.f{step:03d}.idx
+data_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/graphcastgfs.t{cycle:02d}z.pgrb2.0p25.f{step:03d}
+supports_byte_range: true

@@ -72,9 +72,12 @@ download/
 ├── pyproject.toml              # uv 项目配置
 ├── config/
 │   ├── sources/
-│   │   ├── aifs.yaml           # type: aifs — ECMWF AIFS 0.25°（GCS, JSONL .index）
-│   │   ├── gfs.yaml            # type: gfs  — NOAA GFS 0.25° atmos（S3, wgrib2 .idx）
-│   │   ├── hrrr.yaml           # type: hrrr — NOAA HRRR 3km CONUS（S3, wgrib2 .idx）
+│   │   ├── aifs.yaml                   # type: aifs — ECMWF AIFS 0.25°（GCS, JSONL .index）
+│   │   ├── gfs.yaml                    # type: gfs  — NOAA GFS 0.25° atmos（S3, wgrib2 .idx）
+│   │   ├── graphcast_pres.yaml         # type: graphcast — GraphCast GFS 压力层（2026-04-19+，长期存档）
+│   │   ├── graphcast_sfc.yaml          # type: graphcast — GraphCast GFS 地面层（2026-04-19+，长期存档）
+│   │   ├── graphcast_history.yaml      # type: graphcast — GraphCast GFS 合并格式（2024-02-05 ~ 2026-04-18）
+│   │   ├── hrrr.yaml                   # type: hrrr — NOAA HRRR 3km CONUS（S3, wgrib2 .idx）
 │   │   └── s2s_{ecmwf,cma,iap_cas,ncep,ukmo}.yaml  # type: s2s — ECDS 次季节集合预报
 │   ├── jobs/
 │   │   ├── aifs_wind_pv.yaml   # 业务作业（变量组 + 时间 + 下载参数）
@@ -153,7 +156,18 @@ sidecar 解析器：JSONL（ECMWF `.index`）。两个 `type:` 别名共用 `Aif
 #### 内置适配器：`type: gfs` / `type: graphcast`
 
 NOAA wgrib2-idx S3 协议。sidecar 与 GRIB URL **不共用后缀**，所以拆成两个模板。
-sidecar 解析器：wgrib2（解析时会 HEAD 数据 URL 拿 `Content-Length`，用 `total - last_offset` 推断末条 length）。两个 `type:` 别名共用 `GfsSource` 实现 —— `gfs` 指向 `noaa-gfs-bdp-pds`；`graphcast` 指向 `noaa-nws-graphcastgfs-pds`（NOAA NWS GraphCast，桶里命名为 `aigfs.*`），其压力层与地面层分两个 GRIB 文件发布，所以提供 `graphcast_pres.yaml` 与 `graphcast_sfc.yaml` 两份 source 配置。
+sidecar 解析器：wgrib2（解析时会 HEAD 数据 URL 拿 `Content-Length`，用 `total - last_offset` 推断末条 length）。两个 `type:` 别名共用 `GfsSource` 实现 —— `gfs` 指向 `noaa-gfs-bdp-pds`；`graphcast` 指向 `noaa-nws-graphcastgfs-pds`（NOAA NWS GraphCast），其压力层与地面层分两个 GRIB 文件发布。
+
+**GraphCast 数据路径说明**
+
+同一个 S3 桶（`noaa-nws-graphcastgfs-pds`）按时间段分为两种格式：
+
+| source 配置 | 数据范围 | 文件格式 | 说明 |
+|---|---|---|---|
+| `graphcast_pres.yaml` / `graphcast_sfc.yaml` | **2026-04-19 起**永久存档 | pres/sfc 拆分，独立 `.grib2` + `.idx` | 常规使用，格式与 GFS 适配器完全兼容 |
+| `graphcast_history.yaml` | **2024-02-05 ~ 2026-04-18** | pres+sfc 合并，单文件，无 `.grib2` 扩展名 | 所有层次在同一 GRIB 文件，按变量过滤即可 |
+
+> **注意**：2024 年的极早期数据部分缺少 `.idx` sidecar，`fetch_records` 会返回 404；已知 2025 年中期及以后的 pgrb2 文件均有 `.idx`，可正常使用。
 
 ````yaml path=config/sources/gfs.yaml mode=EXCERPT
 type: gfs
