@@ -17,6 +17,7 @@ Subcommands:
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import logging
 import sys
@@ -27,6 +28,7 @@ import httpx
 import structlog
 
 from climate_download.config import TimeConfig, load_job, load_source
+from climate_download.config import _resolve_symbolic_date
 from climate_download.jobs import run_job
 from climate_download.logging_setup import configure_logging
 from climate_download.sources import SOURCE_REGISTRY, Source
@@ -136,10 +138,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_steps.add_argument("--source", required=True,
                          help="path to source YAML, or a bare name resolved "
                               "against config/sources/<name>.yaml")
-    p_steps.add_argument("--date", required=True,
-                         help="YYYYMMDD, today, or yesterday")
-    p_steps.add_argument("--cycle", required=True, type=int,
-                         help="UTC cycle (0/6/12/18)")
+    p_steps.add_argument("--date", default=None,
+                         help="YYYYMMDD, today, or yesterday "
+                              "(default: two days ago UTC)")
+    p_steps.add_argument("--cycle", type=int, default=12,
+                         help="UTC cycle (0/6/12/18, default: 12)")
     p_steps.add_argument("--json", action="store_true",
                          help="emit JSON (one array) instead of one int per line")
     p_steps.set_defaults(func=cmd_list_steps)
@@ -149,17 +152,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="enumerate variables in one (date, cycle, step) sidecar",
         description="Fetch the sidecar index for one step and print every "
                     "distinct (param, levtype, levelist) triple in the order "
-                    "they appear in the file.",
+                    "they appear in the file. ``--date / --cycle / --step`` "
+                    "all default to a reasonably recent published init "
+                    "(two days ago, 12z, step 0) so a bare "
+                    "``--source <name>`` is enough for quick inspection.",
     )
     p_vars.add_argument("--source", required=True,
                         help="path to source YAML, or a bare name resolved "
                              "against config/sources/<name>.yaml")
-    p_vars.add_argument("--date", required=True,
-                        help="YYYYMMDD, today, or yesterday")
-    p_vars.add_argument("--cycle", required=True, type=int,
-                        help="UTC cycle (0/6/12/18)")
-    p_vars.add_argument("--step", required=True, type=int,
-                        help="forecast hour (e.g. 0, 6, 24)")
+    p_vars.add_argument("--date", default=None,
+                        help="YYYYMMDD, today, or yesterday "
+                             "(default: two days ago UTC)")
+    p_vars.add_argument("--cycle", type=int, default=12,
+                        help="UTC cycle (0/6/12/18, default: 12)")
+    p_vars.add_argument("--step", type=int, default=0,
+                        help="forecast hour (e.g. 0, 6, 24, default: 0)")
     p_vars.add_argument("--json", action="store_true",
                         help="emit JSON array of "
                              "{param, levtype, levelist, level_desc, count}")
@@ -333,9 +340,14 @@ def cmd_list_sources(_args: argparse.Namespace) -> int:
 def cmd_list_steps(args: argparse.Namespace) -> int:
     configure_logging()
     source = _resolve_source(args.source)
+    if args.date is None:
+        date = (dt.datetime.now(dt.UTC).date()
+                - dt.timedelta(days=2)).strftime("%Y%m%d")
+    else:
+        date = _resolve_symbolic_date(args.date)
     with httpx.Client(timeout=30.0) as client:
         steps = source.list_available_steps(
-            client, date=args.date, cycle=args.cycle,
+            client, date=date, cycle=args.cycle,
         )
     if steps is None:
         print(
@@ -358,9 +370,18 @@ def cmd_list_variables(args: argparse.Namespace) -> int:
         print("--json and --yaml are mutually exclusive", file=sys.stderr)
         return 2
     source = _resolve_source(args.source)
+    # Resolve omitted/symbolic date to a concrete YYYYMMDD; default is two
+    # days ago UTC, which is conservatively past upstream publish lag for
+    # every built-in source (AIFS/IFS/GFS/HRRR all have the prior 00z/12z
+    # run available by then).
+    if args.date is None:
+        date = (dt.datetime.now(dt.UTC).date()
+                - dt.timedelta(days=2)).strftime("%Y%m%d")
+    else:
+        date = _resolve_symbolic_date(args.date)
     with httpx.Client(timeout=60.0) as client:
         variables = source.list_available_variables(
-            client, date=args.date, cycle=args.cycle, step=args.step,
+            client, date=date, cycle=args.cycle, step=args.step,
         )
     if args.json:
         payload = [
@@ -372,7 +393,7 @@ def cmd_list_variables(args: argparse.Namespace) -> int:
         print(json.dumps(payload, indent=2))
     elif args.yaml:
         print(_render_variables_yaml(variables, source_name=source.name,
-                                     date=args.date, cycle=args.cycle,
+                                     date=date, cycle=args.cycle,
                                      step=args.step))
     else:
         print(f"# {len(variables)} distinct variables")
