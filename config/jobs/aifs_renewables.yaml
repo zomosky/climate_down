@@ -11,7 +11,8 @@
 source: aifs
 
 time:
-  date: yesterday
+  # date: yesterday
+  date: "20260301-20260501"
   cycle: [12]
   steps: all
 
@@ -79,7 +80,8 @@ variables:
 
 download:
   # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
-  output_dir: output
+  # output_dir: output
+  output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
   workers: 8
   gap_tolerance: 0
   timeout_seconds: 120
