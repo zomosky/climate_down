@@ -25,6 +25,7 @@ from climate_download.sources.registry import (
 from climate_download.sources import aifs as _aifs  # noqa: F401
 from climate_download.sources import gfs as _gfs  # noqa: F401
 from climate_download.sources import hrrr as _hrrr  # noqa: F401
+from climate_download.sources import icon as _icon  # noqa: F401
 
 __all__ = [
     "BaseSource",

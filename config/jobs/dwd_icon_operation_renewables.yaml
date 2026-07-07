@@ -1,0 +1,79 @@
+# Renewable-energy / power-trading subset for DWD ICON global — OPERATIONAL run.
+#
+# Real-time leg: schedule on cron just after each cycle publishes (global ICON
+# is fully available ~3-4h after init). Keeping every run you download builds
+# your own clean, subsetted, going-forward archive (opendata deletes after 24h).
+#
+# Mirrors gfs_renewables.yaml / ifs_renewables.yaml but uses DWD's native GRIB
+# shortNames. All fields are SINGLE-LEVEL: global ICON open data has no pressure
+# levels (only model levels) and no single-level hub-height (80/100m) wind — so
+# this is 10 m wind + gusts, near-surface thermo/moisture, surface/MSL pressure,
+# PV radiation, cloud cover and precip/CAPE.
+#
+# References config/sources/dwd_icon_operation.yaml (icosahedral grid caveat there).
+#
+# NOTE on availability:
+#   * Radiation (ASWDIR_S/ASWDIFD_S/ASOB_S/ATHB_S) and TOT_PREC are time-
+#     averaged / accumulated since model start, so they are ~0 at step 0.
+#   * GHI for PV ≈ ASWDIR_S + ASWDIFD_S (direct + diffuse downward shortwave).
+#   * VMAX_10M (gust max) is absent at step 0 — skipped automatically.
+
+source: dwd_icon_operation
+
+time:
+  # ICON global publishes hourly to +78h, then 3-hourly to +180h (113 steps).
+  # `all` scrapes the DWD directory listing for every published hour; use an
+  # explicit range for cheaper experiments, e.g. steps: "0-24:1".
+  date: today
+  cycle: [0]
+  # steps: "0-24:1"
+  steps: all
+
+variables:
+  # ── 10 m wind + gusts ─────────────────────────────────────────
+  - name: wind_10m
+    levtype: single
+    params: [U_10M, V_10M]
+
+  - name: gust_10m
+    levtype: single
+    params: [VMAX_10M]
+
+  # ── Near-surface temperature & humidity ───────────────────────
+  - name: temp_2m
+    levtype: single
+    params: [T_2M, TD_2M, T_G]
+
+  - name: humidity_2m
+    levtype: single
+    params: [RELHUM_2M]
+
+  # ── Surface + mean-sea-level pressure ─────────────────────────
+  - name: pressure
+    levtype: single
+    params: [PS, PMSL]
+
+  # ── Solar radiation flux (PV) ─────────────────────────────────
+  # Direct + diffuse downward give GHI; net SW/LW for energy-balance models.
+  - name: radiation
+    levtype: single
+    params: [ASWDIR_S, ASWDIFD_S, ASWDIFU_S, ASOB_S, ATHB_S]
+
+  # ── Cloud cover (PV variability) ──────────────────────────────
+  - name: cloud
+    levtype: single
+    params: [CLCT, CLCL, CLCM, CLCH]
+
+  # ── Precip / convection / moisture (hydro & ramp risk) ────────
+  - name: precip_moisture
+    levtype: single
+    params: [TOT_PREC, CAPE_ML, TQV, HZEROCL]
+
+download:
+  # Layout: <output_dir>/<source>/<date>/<cycle>z/f<step>.subset.grib2
+  output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

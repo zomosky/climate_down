@@ -18,7 +18,8 @@ source: gfs
 time:
   # Override on the CLI (--date 20260101 --cycle 0,12 --steps all) for
   # backfills; the defaults below run a same-day 0/6 cycle smoke test.
-  date: yesterday
+  # date: yesterday
+  date: "20260101-20260102" 
   # cycle: [0, 12]
   cycle: [12]
   # `all` asks the GFS S3 LIST endpoint for every published forecast hour
@@ -109,7 +110,8 @@ variables:
 
 download:
   # Layout: output/<source>/<date>/<cycle>z/f<step>.subset.grib2 (DownloadConfig defaults).
-  output_dir: output
+  # output_dir: output
+  output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
   workers: 8
   gap_tolerance: 0
   timeout_seconds: 120

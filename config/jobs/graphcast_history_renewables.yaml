@@ -10,7 +10,7 @@
 source: graphcast_history
 
 time:
-  date: "20260201-20260301"
+  date: "20260301-20260401"
   cycle: [12]
   steps: all
 

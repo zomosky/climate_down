@@ -1,0 +1,24 @@
+# DWD ICON global — OPERATIONAL / near-real-time source (public, no auth).
+# Deutscher Wetterdienst open-data server. Adapter: sources/icon.py (type: icon).
+#
+# This is the real-time leg: pull each run directly from opendata.dwd.de as it
+# publishes. It is the official, freshest source — but DWD deletes raw files
+# after ~24h, so there is NO history here (see dwd_icon_history.yaml for backfill,
+# or self-archive by keeping every operational run you download).
+#
+# Layout per variable: one bzip2 GRIB file per variable per step; the adapter
+# downloads each, decompresses, and concatenates into one GRIB2 per step.
+#
+# GRID CAVEAT: global ICON is on the native ICOSAHEDRAL grid (not lat/lon), so
+# the downstream China-bbox crop in climate_restorage needs regridding (CDO/
+# eccodes + the ICON grid file) and will not work unmodified.
+#
+# The renewable single-level variable catalogue is built into the adapter
+# (DEFAULT_ICON_RENEWABLE_CATALOG); add a `catalog:` block here to override it.
+type: icon
+name: dwd-icon-operation
+description: DWD ICON global (icosahedral), operational/near-real-time, renewable single-level subset
+base_url: https://opendata.dwd.de/weather/nwp/icon/grib
+grid: icon_global_icosahedral
+probe_var: T_2M
+workers: 6
