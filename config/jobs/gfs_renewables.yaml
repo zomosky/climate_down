@@ -95,9 +95,14 @@ variables:
 
   # Cloud-layer slabs sit at "low/middle/high cloud layer" which the
   # wgrib2 idx parser classifies as levtype=other (see grib/index.py).
+  # TCDC is included here to capture its "convective cloud layer" and
+  # "boundary layer cloud layer" records (also levtype=other) — matching
+  # gfsdown's config.yaml. TCDC's "entire atmosphere" record is picked up
+  # separately by the cloud_column (atm) group above; TCDC on pressure
+  # levels (pl) is excluded because this group filters levtype=other only.
   - name: cloud_layers
     levtype: other
-    params: [LCDC, MCDC, HCDC]
+    params: [LCDC, MCDC, HCDC, TCDC]
 
   # ── Precipitation + total precipitable water (hydro / ramps) ──
   - name: precip_pwat
