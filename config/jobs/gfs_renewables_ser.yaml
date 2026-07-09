@@ -1,0 +1,107 @@
+# SERVER copy of gfs_renewables.yaml — production deploy (zhangmy-dev container).
+# Do NOT edit the local gfs_renewables.yaml for server use; keep that one for
+# local backfills / validation. This *_ser.yaml is self-contained and driven by
+# deploy/download_run.sh + host crontab (see deploy/README.md).
+#
+# Differences vs the local file: 12z only, date=today, output to /climate_data.
+# Variable groups are identical (incl. the TCDC convective/boundary-layer fix
+# that makes output bit-identical to the legacy gfsdown pipeline).
+
+source: gfs
+
+time:
+  # NOTE: date + cycle are NOT pinned here. The deploy script
+  # (deploy/download_run.sh) computes the init date on the HOST and passes
+  # --date/--cycle, so the container's timezone is irrelevant and this file
+  # never fixes a date (a historical run inside the container can't collide with
+  # it). A bare standalone run falls back to the 'yesterday' default + cycle below.
+  cycle: 12
+  # `all` = every published forecast hour (~209/init: hourly 0-120, then 3-hourly
+  # to 384). Unpublished steps are HEAD-probed and skipped, never failures.
+  # For a lighter hourly-only set change to "0-120:1".
+  steps: all
+
+variables:
+  # ── Hub-height + reference winds ──────────────────────────────
+  - name: wind_100m
+    levtype: hag
+    levels: ["100"]
+    params: [UGRD, VGRD]
+
+  - name: wind_80m
+    levtype: hag
+    levels: ["80"]
+    params: [UGRD, VGRD]
+
+  - name: wind_10m
+    levtype: hag
+    levels: ["10"]
+    params: [UGRD, VGRD]
+
+  # ── 850 hPa synoptic flow & boundary-layer state ──────────────
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [UGRD, VGRD, TMP, RH, HGT]
+
+  # ── Temperature at multiple heights ───────────────────────────
+  - name: temp_hag
+    levtype: hag
+    levels: ["2", "80", "100"]
+    params: [TMP]
+
+  - name: temp_surface
+    levtype: sfc
+    params: [TMP]
+
+  # ── Humidity (RH, SPFH for ρ, DPT for icing/dew) ──────────────
+  - name: humidity_hag
+    levtype: hag
+    levels: ["2", "80"]
+    params: [RH, SPFH, DPT]
+
+  # ── Surface + 80m pressure + MSL ──────────────────────────────
+  - name: pressure_sfc
+    levtype: sfc
+    params: [PRES]
+
+  - name: pressure_hag
+    levtype: hag
+    levels: ["80"]
+    params: [PRES]
+
+  - name: pressure_msl
+    levtype: atm
+    params: [PRMSL]
+
+  # ── Solar radiation flux (PV) ─────────────────────────────────
+  - name: radiation_surface
+    levtype: sfc
+    params: [DSWRF, USWRF, DLWRF, ULWRF]
+
+  # ── Cloud cover (PV variability) ──────────────────────────────
+  - name: cloud_column
+    levtype: atm
+    params: [TCDC]
+
+  - name: cloud_layers
+    levtype: other
+    params: [LCDC, MCDC, HCDC, TCDC]
+
+  # ── Precipitation + total precipitable water (hydro / ramps) ──
+  - name: precip_pwat
+    levtype: sfc
+    params: [APCP, PRATE]
+
+  - name: pwat_column
+    levtype: atm
+    params: [PWAT]
+
+download:
+  # Server output root (shared with climate_restorage's download_root).
+  output_dir: /climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 1

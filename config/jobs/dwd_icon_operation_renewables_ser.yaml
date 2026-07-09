@@ -1,0 +1,60 @@
+# SERVER copy of dwd_icon_operation_renewables.yaml — production deploy.
+# Self-contained; driven by deploy/download_run.sh + host crontab. Keep the
+# local (non-_ser) file for validation; edit server behaviour here only.
+#
+# Differences vs the local file: 12z only, date=today, output to /climate_data.
+
+source: dwd_icon_operation
+
+time:
+  # date + cycle are supplied by deploy/download_run.sh (host-computed); not
+  # pinned here. See gfs_renewables_ser.yaml for the rationale.
+  cycle: 12
+  steps: all
+
+variables:
+  # ── 10 m wind + gusts ─────────────────────────────────────────
+  - name: wind_10m
+    levtype: single
+    params: [U_10M, V_10M]
+
+  - name: gust_10m
+    levtype: single
+    params: [VMAX_10M]
+
+  # ── Near-surface temperature & humidity ───────────────────────
+  - name: temp_2m
+    levtype: single
+    params: [T_2M, TD_2M, T_G]
+
+  - name: humidity_2m
+    levtype: single
+    params: [RELHUM_2M]
+
+  # ── Surface + mean-sea-level pressure ─────────────────────────
+  - name: pressure
+    levtype: single
+    params: [PS, PMSL]
+
+  # ── Solar radiation flux (PV) ─────────────────────────────────
+  - name: radiation
+    levtype: single
+    params: [ASWDIR_S, ASWDIFD_S, ASWDIFU_S, ASOB_S, ATHB_S]
+
+  # ── Cloud cover (PV variability) ──────────────────────────────
+  - name: cloud
+    levtype: single
+    params: [CLCT, CLCL, CLCM, CLCH]
+
+  # ── Precip / convection / moisture (hydro & ramp risk) ────────
+  - name: precip_moisture
+    levtype: single
+    params: [TOT_PREC, CAPE_ML, TQV, HZEROCL]
+
+download:
+  output_dir: /climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 1
