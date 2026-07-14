@@ -61,25 +61,26 @@ both **12z only**:
    timezone); pick any time after the cycle publishes — 02:30 China time is a
    safe default:
    ```cron
-   # NOAA GFS 0.25° (renewable subset), 12z only. Several tries to ride out
-   # upstream publish DELAY: each run re-resolves to the same 12z and resumes,
-   # picking up whatever has since published. LOOKBACK_DAYS=2 (first line) also
-   # self-heals a day interrupted earlier.
-   30 2 * * *  LOOKBACK_DAYS=2 /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
-   30 4 * * *  /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
-   30 6 * * *  /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
+   # NOAA GFS 0.25° (renewable subset), 12z only. A few tries across the publish
+   # window ride out upstream DELAY: each run re-resolves to the same 12z and
+   # resumes, picking up whatever has since published. LOOKBACK_DAYS=2 (first
+   # line) also self-heals a day missed earlier.
+   30 2 * * *  LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
+   30 4 * * *                  /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
+   30 6 * * *                  /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
 
    # DWD ICON global (operational, near-real-time only), 12z only — 2 tries.
    # No LOOKBACK_DAYS — DWD only keeps ~24 h, so older days can't be re-fetched.
-   50 2 * * *  /srv/climate/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /var/log/climate/download_icon.log 2>&1
-   50 4 * * *  /srv/climate/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /var/log/climate/download_icon.log 2>&1
+   50 2 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
+   50 4 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
    ```
    Multiple runs are **safe end-to-end**: an early/delayed run may write a
    manifest with only the steps published so far; when a later run adds the rest,
    restore's `scan-once` sees the manifest is newer than the Zarr and rebuilds it
-   (see `_output_fresh` in `climate_restorage/src/climate_restore/cli.py`).
-   Trade-off: each run that changes the manifest triggers one restore rebuild, so
-   keep the number of tries modest (2–3). Other cycles = same script with `CYCLE=`:
+   (`_output_fresh` in `climate_restorage/src/climate_restore/cli.py`). The
+   download side skips rewriting the manifest when nothing changed (unchanged
+   product signature), so a no-op re-run triggers no rebuild. Keep it to a few
+   tries. Other cycles = same script with `CYCLE=`:
    ```cron
    30 14 * * *  CYCLE=0 /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
    ```

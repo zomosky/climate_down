@@ -56,7 +56,11 @@ else
 fi
 
 NAME="$(basename "$JOB" .yaml)_${CYCLE}z"
-LOCK="${LOCK:-/tmp/download_${NAME}.lock}"
+LOCK="${LOCK:-/home/zhangmingyu/operation/lock/download_${NAME}.lock}"   # ON THE HOST
+
+# flock creates the lock FILE but not its parent dir — ensure the dir exists on
+# the host so a custom LOCK path doesn't fail with "No such file or directory".
+mkdir -p "$(dirname "$LOCK")"
 
 # Container down -> clean skip (exit 0); the next run resumes, losing nothing.
 if ! docker ps --format '{{.Names}}' | grep -qx "$CONTAINER"; then
@@ -66,14 +70,14 @@ fi
 
 echo "download_run: $NAME -> init ${DATE} ${CYCLE}z (host-computed UTC)"
 
-# flock -n -E 0 (inside the container): if a previous run of THIS (job, cycle)
-# is still going, exit 0 instead of stacking a second downloader on the same
-# init. (-E needs util-linux >= 2.27; drop it if the container's flock is older.)
+# flock -n -E 0 ON THE HOST: if a previous run of THIS (job, cycle) is still
+# going, exit 0 instead of stacking a second downloader on the same init.
+# (-E needs util-linux >= 2.27 on the HOST; drop it if the host's flock is older.)
 rc=0
-docker exec -w "$DOWNLOAD_DIR" "$CONTAINER" \
-  flock -n -E 0 "$LOCK" \
-  uv run climate_download run --config "$JOB" \
-    --date "$DATE" --cycle "$CYCLE" --no-progress "$@" \
+flock -n -E 0 "$LOCK" \
+  docker exec -w "$DOWNLOAD_DIR" "$CONTAINER" \
+    uv run climate_download run --config "$JOB" \
+      --date "$DATE" --cycle "$CYCLE" --no-progress "$@" \
   || rc=$?
 
 # climate_download exit codes: 0 all-ok, 1 partial, 2 all-failed.
