@@ -30,17 +30,29 @@ DOWNLOAD_DIR="${DOWNLOAD_DIR:-/workspace/climate_down}"
 CYCLE="${CYCLE:-12}"                       # which forecast cycle (UTC hour)
 PUBLISH_LAG_HOURS="${PUBLISH_LAG_HOURS:-5}" # hrs after CYCLE:00 UTC when the run is fully out
 
-# --- Decide the init date on the HOST -----------------------------------------
+# --- Decide the init date(s) on the HOST --------------------------------------
 # Pick the most recent <cycle>z run that has already published: shift "now" back
 # by (cycle + lag) hours and take that UTC date. This is robust to WHEN the cron
 # fires — it always resolves to the latest available <cycle>z, so the exact cron
 # time stops being critical (a late/extra run just re-resolves and resumes).
+#
+# LOOKBACK_DAYS>0 also re-verifies the previous N days' <cycle>z in the same run
+# (as a date RANGE, which climate_download expands init-by-init). Combined with
+# per-step resume this is a cheap self-heal: a run interrupted on an earlier day
+# (container restart / network drop, no manifest written) is completed by the
+# next day's run instead of being stranded. Complete inits skip in milliseconds.
 if [ -n "${INIT_DATE:-}" ]; then
   DATE="$INIT_DATE"                        # explicit override (backfill)
 else
   BACK=$(( CYCLE + PUBLISH_LAG_HOURS ))
-  # GNU date (Linux host). BSD/macOS host: DATE=$(date -u -v-"${BACK}"H +%Y%m%d)
-  DATE=$(date -u -d "${BACK} hours ago" +%Y%m%d)
+  # GNU date (Linux host). BSD/macOS host: use `date -u -v-"${BACK}"H +%Y%m%d`.
+  END=$(date -u -d "${BACK} hours ago" +%Y%m%d)
+  if [ "${LOOKBACK_DAYS:-0}" -gt 0 ]; then
+    START=$(date -u -d "$(( BACK + LOOKBACK_DAYS * 24 )) hours ago" +%Y%m%d)
+    DATE="${START}-${END}"                 # range: re-verify recent inits + latest
+  else
+    DATE="$END"
+  fi
 fi
 
 NAME="$(basename "$JOB" .yaml)_${CYCLE}z"

@@ -157,6 +157,35 @@ def build_manifest(
     }
 
 
+def _product_signature(payload: dict[str, Any]) -> tuple:
+    """The parts of a manifest that determine the downstream product + readiness.
+
+    Excludes volatile fields that change between runs without changing what a
+    consumer would build: the top-level ``completed_at`` timestamp and the
+    per-file download stats (``http_requests`` / ``savings_pct`` / ``records_*``
+    / ``selected_breakdown`` — these differ between a fresh download and a
+    resume-only re-run of the very same files). What remains is each step's
+    ``(step_hours, filename, sha256)`` plus the ``(step, phase)`` of any failure:
+    the set of GRIB messages a consumer sees, and whether the init is ready.
+    """
+    files = sorted(
+        (f.get("step_hours"), Path(str(f.get("path", ""))).name, f.get("sha256"))
+        for f in payload.get("files", [])
+    )
+    fails = sorted(
+        (f.get("step"), f.get("phase")) for f in payload.get("failures", [])
+    )
+    return (files, fails)
+
+
+def _existing_signature(path: Path) -> tuple | None:
+    try:
+        old = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):  # missing / unreadable / invalid JSON
+        return None
+    return _product_signature(old)
+
+
 def write_manifest(
     config: JobConfig,
     results: Sequence[JobResult],
@@ -164,11 +193,21 @@ def write_manifest(
     completed_at: dt.datetime | None = None,
     failures: Sequence[JobFailure] = (),
 ) -> Path:
-    """Write the manifest atomically and return its path."""
+    """Write the manifest atomically and return its path.
+
+    No-op guard: if a manifest already exists at the target path with an
+    identical *product signature* (:func:`_product_signature` — same step files +
+    sha256 + failures), the write is skipped so the file's mtime is left
+    untouched. This stops a resume-only re-run (e.g. an extra cron pass that
+    found nothing new) from needlessly re-triggering the downstream restore
+    rebuild, which keys off manifest-vs-output mtime.
+    """
     payload = build_manifest(
         config, results, completed_at=completed_at, failures=failures,
     )
     out = manifest_path(config, results, failures=failures)
+    if out.is_file() and _existing_signature(out) == _product_signature(payload):
+        return out
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_suffix(out.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8") as fh:

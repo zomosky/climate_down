@@ -61,15 +61,25 @@ both **12z only**:
    timezone); pick any time after the cycle publishes — 02:30 China time is a
    safe default:
    ```cron
-   # NOAA GFS 0.25° (renewable subset), 12z only
-   30 2 * * *  /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
+   # NOAA GFS 0.25° (renewable subset), 12z only. Several tries to ride out
+   # upstream publish DELAY: each run re-resolves to the same 12z and resumes,
+   # picking up whatever has since published. LOOKBACK_DAYS=2 (first line) also
+   # self-heals a day interrupted earlier.
+   30 2 * * *  LOOKBACK_DAYS=2 /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
+   30 4 * * *  /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
+   30 6 * * *  /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
 
-   # DWD ICON global (operational, near-real-time only), 12z only
+   # DWD ICON global (operational, near-real-time only), 12z only — 2 tries.
+   # No LOOKBACK_DAYS — DWD only keeps ~24 h, so older days can't be re-fetched.
    50 2 * * *  /srv/climate/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /var/log/climate/download_icon.log 2>&1
+   50 4 * * *  /srv/climate/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /var/log/climate/download_icon.log 2>&1
    ```
-   Because the date is host-computed, extra "catch-up" lines are safe and cheap
-   (they resolve to the same init and resume), e.g. add `30 5 * * *` for GFS.
-   Other cycles = same script with `CYCLE=`:
+   Multiple runs are **safe end-to-end**: an early/delayed run may write a
+   manifest with only the steps published so far; when a later run adds the rest,
+   restore's `scan-once` sees the manifest is newer than the Zarr and rebuilds it
+   (see `_output_fresh` in `climate_restorage/src/climate_restore/cli.py`).
+   Trade-off: each run that changes the manifest triggers one restore rebuild, so
+   keep the number of tries modest (2–3). Other cycles = same script with `CYCLE=`:
    ```cron
    30 14 * * *  CYCLE=0 /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
    ```
@@ -82,6 +92,7 @@ both **12z only**:
 | `DOWNLOAD_DIR`      | `/workspace/climate_down` | download project dir inside the container      |
 | `CYCLE`             | `12`                      | forecast cycle (UTC hour) — also names the lock/log |
 | `PUBLISH_LAG_HOURS` | `5`                       | hrs after `CYCLE`:00 UTC when the run is fully out (date-boundary only) |
+| `LOOKBACK_DAYS`     | `0`                       | also re-verify the previous N days' `CYCLE`z this run (self-heal; resume makes it cheap). GFS: use `2`; DWD ICON: keep `0` (no history) |
 | `INIT_DATE`         | *(host-computed)*         | set `YYYYMMDD` to fetch a specific init (backfill) |
 | `LOCK`              | `/tmp/download_<job>_<cc>z.lock` | per-(job,cycle) flock (in-container)     |
 
@@ -97,6 +108,35 @@ host (env above). Extra CLI args after the job path pass straight through.
 - **Container down** → exit 0 (skip); the next run catches up.
 - **Exit code**: `0` ok, `1` partial (downgraded to 0 + logged — usually a step
   not yet published), `2` all-failed (propagated → alert on it in the log).
+
+## Recovery from an interrupted download
+
+Resilience is layered — nothing is re-downloaded that already completed:
+
+1. **Transient errors** (SSL EOF / timeout / 408·429·5xx) retry 4× with
+   exponential backoff, per request. A short network blip never fails a step.
+2. **One bad step/init** is captured, not fatal — the rest of the run continues.
+3. **Re-run resumes**: a step whose local GRIB is already valid (`GRIB…7777`) is
+   skipped in milliseconds; a truncated/corrupt file is deleted and re-fetched.
+   So re-running the *same* `(date, cycle)` only fills the gaps.
+
+The only thing a single daily cron can't do alone is **re-target an init that
+was interrupted on a previous day** (the next day's run points at a new date).
+Two ways to cover that, both cheap because of resume:
+
+- **`LOOKBACK_DAYS=2`** on the GFS cron line (recommended): each run also
+  re-verifies the last 2 days' 12z. A day that died mid-run (even before any
+  manifest was written) is completed by the next run automatically.
+- **Extra same-day catch-up line** (e.g. `30 5 * * *`): re-resolves to the same
+  latest 12z and finishes it, in case the first run was cut short.
+
+How it heals end-to-end: an interrupted run leaves partial GRIB (and either no
+manifest, or one carrying `failures`). Restore **skips** such an init (its
+`scan-once` requires `completed_at` set and `failures` empty), so no partial
+Zarr is ever built. When a later run completes the init, it atomically rewrites
+a clean manifest → restore's next tick builds the full Zarr. DWD ICON is the
+exception: it keeps only ~24 h upstream, so keep `LOOKBACK_DAYS=0` there and
+rely on same-day catch-up only.
 
 ## Run it once by hand / backfill
 
