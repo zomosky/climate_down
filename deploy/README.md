@@ -50,18 +50,19 @@ China time = UTC+8, so the data lands early next China morning.
 | `dwd-icon-operation`     | ~16:00           | ~00:00 +1d   | 02:30     | 04:30    | 5 (default)         | shipped |
 | `gfs-0p25`               | ~17:00           | ~01:00 +1d   | 02:30     | 06:30 (+04:30 optional) | 5 (default) | shipped |
 | `ifs-hres`               | ~21:30           | ~05:30 +1d   | 06:30     | 08:30, 10:30 | 10               | shipped |
-| `aifs-single` *(est.)*   | ~19:00–20:00     | ~03:00–04:00 +1d | 04:30 | 06:30    | 8                   | make one |
+| `aifs-single`            | ~17:30           | ~01:30 +1d   | 02:30     | 04:30    | 6                   | shipped |
 | `graphcast` / aigfs *(est.)* | ~17:00–18:00 | ~01:00–02:00 +1d | 03:00 | 05:00    | 6                   | make one |
 
 - **Verified**: GFS (NOAA S3 ~+5 h), DWD ICON (~+4 h), ECMWF IFS (real-time
-  dissemination +7.5 h, then +2 h for the 0.25° open-data stream ⇒ ~+9.5 h).
-- **Estimates** (AIFS, GraphCast) — *verify before trusting*: run
-  `uv run climate_download list-steps --source <name> --cycle 12` at a few times
-  and watch when the full step list appears; then set the first-run time just
-  after that and `PUBLISH_LAG_HOURS ≈ (that UTC hour − 12)`.
-- AIFS/GraphCast need their own `*_ser.yaml` first (copy the `gfs`/`ifs` one,
-  swap `source:` + variable groups). GraphCast on the China-relevant grid also
-  needs the aigfs pressure/surface split — see the local `graphcast_*` jobs.
+  dissemination +7.5 h, then +2 h for the 0.25° open-data stream ⇒ ~+9.5 h),
+  AIFS (GCS object mtimes: 12z 0-360h all written by ~17:29 UTC ⇒ ~+5.5 h — early
+  like GFS, because the AI model is fast and has zero open-data delay).
+- **Estimate** (GraphCast) — *verify before trusting*: read the AWS object
+  timestamps (or run `list-steps --source graphcast --cycle 12` at a few times),
+  then set the first-run time just after full publish and
+  `PUBLISH_LAG_HOURS ≈ (that UTC hour − 12)`. It needs its own `*_ser.yaml` first
+  (copy an existing one, swap `source:` + variable groups; the China-relevant
+  grid also needs the aigfs pressure/surface split — see the local `graphcast_*` jobs).
 - HRRR is CONUS-only and S2S is a separate sub-seasonal pipeline — neither is
   scheduled here.
 
@@ -94,6 +95,11 @@ China time = UTC+8, so the data lands early next China morning.
    # missed earlier. Add a 04:30 line too if you want tighter delay coverage.
    30 2 * * *  LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
    30 6 * * *                  /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
+
+   # ECMWF AIFS-Single 0.25° 12z — publishes EARLY (~17:30 UTC / 01:30 China),
+   # same window as GFS; needs PUBLISH_LAG_HOURS=6 (flip just after ~17:30 UTC).
+   40 2 * * *  PUBLISH_LAG_HOURS=6 LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/aifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_aifs.log 2>&1
+   40 4 * * *  PUBLISH_LAG_HOURS=6                 /home/zhangmingyu/operation/download_run.sh config/jobs/aifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_aifs.log 2>&1
 
    # DWD ICON global (operational, near-real-time only), 12z only — 2 tries.
    # No LOOKBACK_DAYS — DWD only keeps ~24 h, so older days can't be re-fetched.

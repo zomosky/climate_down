@@ -10,9 +10,9 @@ source: aifs
 time:
   # date + cycle supplied by deploy/download_run.sh (host-computed). See
   # gfs_renewables_ser.yaml for the rationale. AIFS 0.25° open data has NO
-  # open-data delay (removed Oct 2025) so it lands earlier than IFS — ESTIMATE
-  # ~+8h. VERIFY with `list-steps --source aifs --cycle 12` and tune the cron
-  # first-run time + PUBLISH_LAG_HOURS accordingly (see deploy/README.md).
+  # open-data delay (removed Oct 2025), so it lands EARLY like GFS, not late
+  # like IFS: verified from GCS object mtimes, 12z 0-360h is fully published by
+  # ~17:30 UTC (~01:30 China, +5.5h). Use PUBLISH_LAG_HOURS=6 on the cron line.
   cycle: 12
   # AIFS-Single oper steps: 0-360h by 6h. `all` lists what's published;
   # unpublished steps are skipped, never failures.
