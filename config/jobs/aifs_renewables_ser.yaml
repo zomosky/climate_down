@@ -1,0 +1,89 @@
+# SERVER copy of aifs_renewables.yaml — production deploy (zhangmy-dev container).
+# Self-contained; driven by deploy/download_run.sh + host crontab. Keep the local
+# aifs_renewables.yaml for backfills/validation; edit server behaviour here only.
+#
+# date/cycle come from the host script (--date/--cycle); not pinned here.
+# ECMWF AIFS-Single is 00/06/12/18z; this file targets 12z via the cron CYCLE.
+
+source: aifs
+
+time:
+  # date + cycle supplied by deploy/download_run.sh (host-computed). See
+  # gfs_renewables_ser.yaml for the rationale. AIFS 0.25° open data has NO
+  # open-data delay (removed Oct 2025) so it lands earlier than IFS — ESTIMATE
+  # ~+8h. VERIFY with `list-steps --source aifs --cycle 12` and tune the cron
+  # first-run time + PUBLISH_LAG_HOURS accordingly (see deploy/README.md).
+  cycle: 12
+  # AIFS-Single oper steps: 0-360h by 6h. `all` lists what's published;
+  # unpublished steps are skipped, never failures.
+  steps: all
+
+variables:
+  # ── Hub-height + reference winds (AIFS: 10 m + 100 m only) ─────
+  - name: wind_100m
+    levtype: sfc
+    params: [100u, 100v]
+
+  - name: wind_10m
+    levtype: sfc
+    params: [10u, 10v]
+
+  # ── 850 hPa synoptic flow (no RH on AIFS pl — use q instead) ──
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [u, v, t, q, z]
+
+  # ── Temperature: 2 m + skin ───────────────────────────────────
+  - name: temp_2m
+    levtype: sfc
+    params: [2t]
+
+  - name: temp_skin
+    levtype: sfc
+    params: [skt]
+
+  # ── Humidity: only 2 m dewpoint exposed on AIFS surface ───────
+  - name: humidity_2m
+    levtype: sfc
+    params: [2d]
+
+  # ── Surface + MSL pressure ────────────────────────────────────
+  - name: pressure_sfc
+    levtype: sfc
+    params: [sp]
+
+  - name: pressure_msl
+    levtype: sfc
+    params: [msl]
+
+  # ── Solar / longwave radiation (downward only) ────────────────
+  - name: radiation_surface
+    levtype: sfc
+    params: [ssrd, strd]
+
+  # ── Cloud cover (total + layer slabs) ─────────────────────────
+  - name: cloud_total
+    levtype: sfc
+    params: [tcc]
+
+  - name: cloud_layers
+    levtype: sfc
+    params: [lcc, mcc, hcc]
+
+  # ── Precipitation + total column water (hydro / ramps) ────────
+  - name: precip
+    levtype: sfc
+    params: [tp, cp, sf]
+
+  - name: tcw_column
+    levtype: sfc
+    params: [tcw]
+
+download:
+  output_dir: /climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 1
