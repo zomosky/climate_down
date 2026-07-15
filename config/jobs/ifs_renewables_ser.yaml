@@ -1,0 +1,98 @@
+# SERVER copy of ifs_renewables.yaml — production deploy (zhangmy-dev container).
+# Self-contained; driven by deploy/download_run.sh + host crontab. Keep the local
+# ifs_renewables.yaml for backfills/validation; edit server behaviour here only.
+#
+# date/cycle come from the host script (--date/--cycle); not pinned here.
+# ECMWF IFS oper/fc is 00z & 12z only (this file targets 12z via the cron CYCLE).
+
+source: ifs
+
+time:
+  # date + cycle supplied by deploy/download_run.sh (host-computed). See
+  # gfs_renewables_ser.yaml for the rationale. NOTE for IFS: 0.25° open data
+  # publishes ~+9.5h after init (real-time dissemination +7.5h, then +2h for the
+  # 0.25° open-data stream) — much later than GFS (~+5h). Set PUBLISH_LAG_HOURS=10
+  # on the cron line so the host resolves the right init (see deploy/README.md).
+  cycle: 12
+  # oper/fc steps: 0-144h by 3h, then 150-240h by 6h (~63 steps). `all` lists
+  # what's published; unpublished steps are skipped, never failures.
+  steps: all
+
+variables:
+  # ── Hub-height + reference winds (IFS: 10 m + 100 m only, no 80 m) ──
+  - name: wind_100m
+    levtype: sfc
+    params: [100u, 100v]
+
+  - name: wind_10m
+    levtype: sfc
+    params: [10u, 10v]
+
+  - name: wind_gust_10m
+    levtype: sfc
+    params: [10fg]
+
+  # ── 850 hPa synoptic flow (full IFS set: u, v, t, q, r, gh) ───
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [u, v, t, q, r, gh]
+
+  # ── Temperature: 2 m + skin + 3h min/max ──────────────────────
+  - name: temp_2m
+    levtype: sfc
+    params: [2t]
+
+  - name: temp_skin
+    levtype: sfc
+    params: [skt]
+
+  - name: temp_minmax_3h
+    levtype: sfc
+    params: [mn2t3, mx2t3]
+
+  # ── Humidity: 2 m dewpoint ────────────────────────────────────
+  - name: humidity_2m
+    levtype: sfc
+    params: [2d]
+
+  # ── Surface + MSL pressure ────────────────────────────────────
+  - name: pressure_sfc
+    levtype: sfc
+    params: [sp]
+
+  - name: pressure_msl
+    levtype: sfc
+    params: [msl]
+
+  # ── Radiation: downward + net solar/thermal/top-of-atm ────────
+  - name: radiation_surface
+    levtype: sfc
+    params: [ssrd, strd, ssr, str, ttr]
+
+  # ── Cloud cover (only total exposed by IFS) ───────────────────
+  - name: cloud_total
+    levtype: sfc
+    params: [tcc]
+
+  # ── Precipitation (total / convective / snowfall / runoff) ────
+  - name: precip
+    levtype: sfc
+    params: [tp, cp, sf, ro]
+
+  - name: tcwv_column
+    levtype: sfc
+    params: [tcwv]
+
+  # ── CAPE for convection / ramping diagnostics ─────────────────
+  - name: cape
+    levtype: sfc
+    params: [mucape]
+
+download:
+  output_dir: /climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 1

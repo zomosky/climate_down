@@ -34,9 +34,36 @@ UTC = 01:00 China time). Running before merely re-fetches the previous day
 The local `config/jobs/gfs_renewables.yaml` etc. are kept **unchanged** for local
 backfills / validation. The server runs self-contained copies —
 `config/jobs/*_ser.yaml` — which pin `steps: all`, `output_dir: /climate_data`,
-and `cycle: 12`, but **not** a date (the host supplies it). Currently deployed,
-both **12z only**:
-`gfs_renewables_ser.yaml`, `dwd_icon_operation_renewables_ser.yaml`.
+and `cycle: 12`, but **not** a date (the host supplies it). Currently shipped,
+all **12z only**: `gfs_renewables_ser.yaml`,
+`dwd_icon_operation_renewables_ser.yaml`, `ifs_renewables_ser.yaml`.
+
+## Publish timing & recommended schedule (China time, 12z run)
+
+Each source becomes fully available at a different time after the 12:00 UTC init,
+so each needs its own China-time cron window and `PUBLISH_LAG_HOURS` (which tells
+the host date logic when the run is "out"). Times below are for the **12z** run;
+China time = UTC+8, so the data lands early next China morning.
+
+| source (`source.name`)   | 12z full ≈ (UTC) | ≈ China time | first run | catch-up | `PUBLISH_LAG_HOURS` | `*_ser.yaml` |
+|--------------------------|------------------|--------------|-----------|----------|---------------------|--------------|
+| `dwd-icon-operation`     | ~16:00           | ~00:00 +1d   | 02:30     | 04:30    | 5 (default)         | shipped |
+| `gfs-0p25`               | ~17:00           | ~01:00 +1d   | 02:30     | 06:30 (+04:30 optional) | 5 (default) | shipped |
+| `ifs-hres`               | ~21:30           | ~05:30 +1d   | 06:30     | 08:30, 10:30 | 10               | shipped |
+| `aifs-single` *(est.)*   | ~19:00–20:00     | ~03:00–04:00 +1d | 04:30 | 06:30    | 8                   | make one |
+| `graphcast` / aigfs *(est.)* | ~17:00–18:00 | ~01:00–02:00 +1d | 03:00 | 05:00    | 6                   | make one |
+
+- **Verified**: GFS (NOAA S3 ~+5 h), DWD ICON (~+4 h), ECMWF IFS (real-time
+  dissemination +7.5 h, then +2 h for the 0.25° open-data stream ⇒ ~+9.5 h).
+- **Estimates** (AIFS, GraphCast) — *verify before trusting*: run
+  `uv run climate_download list-steps --source <name> --cycle 12` at a few times
+  and watch when the full step list appears; then set the first-run time just
+  after that and `PUBLISH_LAG_HOURS ≈ (that UTC hour − 12)`.
+- AIFS/GraphCast need their own `*_ser.yaml` first (copy the `gfs`/`ifs` one,
+  swap `source:` + variable groups). GraphCast on the China-relevant grid also
+  needs the aigfs pressure/surface split — see the local `graphcast_*` jobs.
+- HRRR is CONUS-only and S2S is a separate sub-seasonal pipeline — neither is
+  scheduled here.
 
 ## Prerequisites
 
@@ -61,19 +88,27 @@ both **12z only**:
    timezone); pick any time after the cycle publishes — 02:30 China time is a
    safe default:
    ```cron
-   # NOAA GFS 0.25° (renewable subset), 12z only. A few tries across the publish
-   # window ride out upstream DELAY: each run re-resolves to the same 12z and
-   # resumes, picking up whatever has since published. LOOKBACK_DAYS=2 (first
-   # line) also self-heals a day missed earlier.
+   # NOAA GFS 0.25° (renewable subset), 12z only. 02:30 is already past full
+   # publish (~01:00 China); 06:30 is the delay/interruption catch-up (re-resolves
+   # to the same 12z and resumes). LOOKBACK_DAYS=2 (first line) self-heals a day
+   # missed earlier. Add a 04:30 line too if you want tighter delay coverage.
    30 2 * * *  LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
-   30 4 * * *                  /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
    30 6 * * *                  /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
 
    # DWD ICON global (operational, near-real-time only), 12z only — 2 tries.
    # No LOOKBACK_DAYS — DWD only keeps ~24 h, so older days can't be re-fetched.
    50 2 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
    50 4 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
+
+   # ECMWF IFS-HRES 0.25° (oper/fc, 00z+12z; this is 12z). Publishes ~+9.5 h,
+   # much later than GFS — hence the morning window + PUBLISH_LAG_HOURS=10.
+   30 6  * * *  PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs.log 2>&1
+   30 8  * * *  PUBLISH_LAG_HOURS=10                 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs.log 2>&1
+   30 10 * * *  PUBLISH_LAG_HOURS=10                 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs.log 2>&1
    ```
+   See **Publish timing & recommended schedule** above for the per-source times /
+   `PUBLISH_LAG_HOURS`. GFS 12z lines drop to 3 tries only for delay insurance; a
+   day interrupted earlier is covered by `LOOKBACK_DAYS=2` on the first line.
    Multiple runs are **safe end-to-end**: an early/delayed run may write a
    manifest with only the steps published so far; when a later run adds the rest,
    restore's `scan-once` sees the manifest is newer than the Zarr and rebuilds it
