@@ -51,7 +51,7 @@ def test_shipped_icon_yaml_loads_with_default_catalog():
     import yaml
     repo_root = Path(__file__).resolve().parent.parent
     raw = yaml.safe_load(
-        (repo_root / "config" / "sources" / "dwd_icon_operation.yaml").read_text()
+        (repo_root / "config" / "sources" / "dwd_icon.yaml").read_text()
     )
     assert raw["type"] == "icon"
     src = load_source_dict(raw)

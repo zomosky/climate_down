@@ -16,7 +16,7 @@
 # The renewable single-level variable catalogue is built into the adapter
 # (DEFAULT_ICON_RENEWABLE_CATALOG); add a `catalog:` block here to override it.
 type: icon
-name: dwd-icon-operation
+name: dwd-icon
 description: DWD ICON global (icosahedral), operational/near-real-time, renewable single-level subset
 base_url: https://opendata.dwd.de/weather/nwp/icon/grib
 grid: icon_global_icosahedral

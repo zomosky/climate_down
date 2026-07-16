@@ -1,10 +1,10 @@
-# SERVER copy of dwd_icon_operation_renewables.yaml — production deploy.
+# SERVER copy of dwd_icon_renewables.yaml — production deploy.
 # Self-contained; driven by deploy/download_run.sh + host crontab. Keep the
 # local (non-_ser) file for validation; edit server behaviour here only.
 #
 # Differences vs the local file: 12z only, date=today, output to /climate_data.
 
-source: dwd_icon_operation
+source: dwd_icon
 
 time:
   # date + cycle are supplied by deploy/download_run.sh (host-computed); not

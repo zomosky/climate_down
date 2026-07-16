@@ -36,7 +36,7 @@ backfills / validation. The server runs self-contained copies —
 `config/jobs/*_ser.yaml` — which pin `steps: all`, `output_dir: /climate_data`,
 and `cycle: 12`, but **not** a date (the host supplies it). Currently shipped,
 all **12z only**: `gfs_renewables_ser.yaml`,
-`dwd_icon_operation_renewables_ser.yaml`, `ifs_renewables_ser.yaml`.
+`dwd_icon_renewables_ser.yaml`, `ifs_renewables_ser.yaml`.
 
 ## Publish timing & recommended schedule (China time, 12z run)
 
@@ -47,7 +47,7 @@ China time = UTC+8, so the data lands early next China morning.
 
 | source (`source.name`)   | 12z full ≈ (UTC) | ≈ China time | first run | catch-up | `PUBLISH_LAG_HOURS` | `*_ser.yaml` |
 |--------------------------|------------------|--------------|-----------|----------|---------------------|--------------|
-| `dwd-icon-operation`     | ~16:00           | ~00:00 +1d   | 02:30     | 04:30    | 5 (default)         | shipped |
+| `dwd-icon`     | ~16:00           | ~00:00 +1d   | 02:30     | 04:30    | 5 (default)         | shipped |
 | `gfs-0p25`               | ~17:00           | ~01:00 +1d   | 02:30     | 06:30 (+04:30 optional) | 5 (default) | shipped |
 | `ifs-hres`               | ~21:30           | ~05:30 +1d   | 06:30     | 08:30, 10:30 | 10               | shipped |
 | `aifs-single`            | ~17:30           | ~01:30 +1d   | 02:30     | 04:30    | 6                   | shipped |
@@ -103,8 +103,8 @@ China time = UTC+8, so the data lands early next China morning.
 
    # DWD ICON global (operational, near-real-time only), 12z only — 2 tries.
    # No LOOKBACK_DAYS — DWD only keeps ~24 h, so older days can't be re-fetched.
-   50 2 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
-   50 4 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_operation_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
+   50 2 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
+   50 4 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd_icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
 
    # ECMWF IFS-HRES 0.25° (oper/fc, 00z+12z; this is 12z). Publishes ~+9.5 h,
    # much later than GFS — hence the morning window + PUBLISH_LAG_HOURS=10.
