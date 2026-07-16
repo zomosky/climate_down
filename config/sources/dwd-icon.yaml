@@ -3,7 +3,7 @@
 #
 # This is the real-time leg: pull each run directly from opendata.dwd.de as it
 # publishes. It is the official, freshest source — but DWD deletes raw files
-# after ~24h, so there is NO history here (see dwd_icon_history.yaml for backfill,
+# after ~24h, so there is NO history here (see dwd-icon_history.yaml for backfill,
 # or self-archive by keeping every operational run you download).
 #
 # Layout per variable: one bzip2 GRIB file per variable per step; the adapter

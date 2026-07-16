@@ -10,7 +10,7 @@
 # this is 10 m wind + gusts, near-surface thermo/moisture, surface/MSL pressure,
 # PV radiation, cloud cover and precip/CAPE.
 #
-# References config/sources/dwd_icon.yaml (icosahedral grid caveat there).
+# References config/sources/dwd-icon.yaml (icosahedral grid caveat there).
 #
 # NOTE on availability:
 #   * Radiation (ASWDIR_S/ASWDIFD_S/ASOB_S/ATHB_S) and TOT_PREC are time-
@@ -18,7 +18,7 @@
 #   * GHI for PV ≈ ASWDIR_S + ASWDIFD_S (direct + diffuse downward shortwave).
 #   * VMAX_10M (gust max) is absent at step 0 — skipped automatically.
 
-source: dwd_icon
+source: dwd-icon
 
 time:
   # ICON global publishes hourly to +78h, then 3-hourly to +180h (113 steps).
