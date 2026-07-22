@@ -1,0 +1,32 @@
+# NOAA NWS AIGFS (GraphCast) 0.25° — sfc + pres MERGED into one subset.
+#
+# Post-cutover (2026-04-19+) AIGFS splits each step into two files
+# (aigfs.t{cc}z.sfc / .pres). This `type: graphcast-merged` source fetches BOTH
+# and concatenates the selected messages into one .subset.grib2, so restore
+# emits ONE flat Zarr per init — structurally identical to the earlier merged
+# archive (graphcast_history.yaml). Both sides therefore land under the SAME
+# product name `graphcast`, giving one continuous, uniform Zarr series
+# across the 2026-04-19 format cutover.
+#
+# ── Paths ─────────────────────────────────────────────────────────────────────
+#   [near-real-time, retained 90+ days in practice]  aigfs.{date}/{cc}/model/atmos/grib2/  ← this config
+#   [permanent archive, 2026-04-19+, ~21d delay]     graphcastgfs.{date}/{cc}/forecasts_13_levels/
+#     For dates that have aged out of the recent path, swap the four templates to:
+#       sfc  idx : https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/aigfs.t{cycle:02d}z.sfc.f{step:03d}.grib2.idx
+#       sfc  data: https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/aigfs.t{cycle:02d}z.sfc.f{step:03d}.grib2
+#       pres idx : https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2.idx
+#       pres data: https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2
+#
+# Step coverage: 0..384h by 6h (65 steps). Restore adapter: `graphcast`.
+type: graphcast-merged
+name: graphcast
+description: NOAA AIGFS 0.25° sfc+pres merged (unified with the pre-cutover archive)
+sfc_index_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.sfc.f{step:03d}.grib2.idx
+sfc_data_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.sfc.f{step:03d}.grib2
+pres_index_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2.idx
+pres_data_url_template: >-
+  https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/aigfs.{date}/{cycle:02d}/model/atmos/grib2/aigfs.t{cycle:02d}z.pres.f{step:03d}.grib2
+supports_byte_range: true

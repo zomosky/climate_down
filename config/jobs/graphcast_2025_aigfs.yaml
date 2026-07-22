@@ -1,16 +1,18 @@
-# Renewable-energy variable subset for NOAA NWS GraphCast 0.25° early
-# archive (2024-02-05 ~ 2026-04-18). In this period pres and sfc fields are
-# merged into a single pgrb2 file per (date, cycle, step), so this job
-# combines the variable groups of graphcast_pres_renewables.yaml and
-# graphcast_sfc_renewables.yaml into one config.
+# GraphCast 0.25° renewables — post-cutover window, NEW AIGFS (sfc+pres MERGED).
 #
-# For dates >= 2026-04-19 use graphcast_pres_renewables.yaml /
-# graphcast_sfc_renewables.yaml instead (pres/sfc are split).
+# Window B of the unified 2025→now series: 2026-04-21 → now. AIGFS splits each
+# step into sfc + pres files; the `graphcast-merged` source fetches both and
+# concatenates them into one subset, so restore emits ONE Zarr per init that is
+# structurally identical to Window A (graphcast_2025_history.yaml). Both write
+# under name `graphcast` → one continuous, uniform Zarr series.
+#
+# variables: MUST stay identical to graphcast_2025_history.yaml (VVEL included —
+# it is published in both formats, matching the existing graphcast zarrs).
 
-source: graphcast_history
+source: graphcast_merged
 
 time:
-  date: "20260301-20260401"
+  date: "20260421-20260721"
   cycle: [12]
   steps: all
 
@@ -20,48 +22,39 @@ variables:
     levtype: pl
     levels: ["850"]
     params: [UGRD, VGRD, TMP, SPFH, HGT]
-
-  # ── Boundary-layer wind profile (10 m proxy via 1000 hPa) ─────
+  # ── Boundary-layer profile (1000 hPa) ─────────────────────────
   - name: pl_1000
     levtype: pl
     levels: ["1000"]
     params: [UGRD, VGRD, TMP, SPFH, HGT]
-
-  # ── Mid-tropospheric flow for ramp diagnostics ────────────────
+  # ── Mid-tropospheric flow (500 hPa) ───────────────────────────
   - name: pl_500
     levtype: pl
     levels: ["500"]
     params: [UGRD, VGRD, TMP, HGT]
-
-  # ── Vertical motion (convection / cloud development proxy) ────
+  # ── Vertical motion (VVEL — present in BOTH formats) ──────────
   - name: vvel_profile
     levtype: pl
     levels: ["500", "700", "850", "925"]
     params: [VVEL]
-
   # ── Reference 10 m wind ───────────────────────────────────────
   - name: wind_10m
     levtype: hag
     params: [UGRD, VGRD]
-
   # ── 2 m temperature ───────────────────────────────────────────
   - name: temp_2m
     levtype: hag
     params: [TMP]
-
   # ── Mean sea-level pressure ───────────────────────────────────
   - name: pressure_msl
     levtype: atm
     params: [PRMSL]
-
-  # ── Accumulated precipitation (since cycle start) ─────────────
+  # ── Accumulated precipitation ─────────────────────────────────
   - name: precip
     levtype: sfc
     params: [APCP]
 
 download:
-  # Output layout: <output_dir>/<source-name>/<date>/<cycle>z/f<step>.subset.grib2
-  # ``source-name`` here = "graphcast-history" (from graphcast_history.yaml).
   output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
   workers: 8
   gap_tolerance: 0

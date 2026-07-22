@@ -24,6 +24,7 @@ from climate_download.sources.registry import (
 # Side-effect imports: each module's @register call populates SOURCE_REGISTRY.
 from climate_download.sources import aifs as _aifs  # noqa: F401
 from climate_download.sources import gfs as _gfs  # noqa: F401
+from climate_download.sources import graphcast_merged as _graphcast_merged  # noqa: F401
 from climate_download.sources import hrrr as _hrrr  # noqa: F401
 from climate_download.sources import icon as _icon  # noqa: F401
 

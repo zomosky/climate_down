@@ -1,0 +1,64 @@
+# GraphCast 0.25° renewables — 2025→cutover backfill, OLD merged archive.
+#
+# Window A of the unified 2025→now series: 2025-01-01 ~ 2026-04-20, when pres
+# and sfc are merged in a single pgrb2 file (graphcast_history.yaml source).
+# Window B (2026-04-21 → now) uses graphcast_2025_aigfs.yaml with an IDENTICAL
+# variables: block, so both windows produce the same variables in one uniform
+# `graphcast` Zarr series. This block matches the earlier renewables selection
+# (which produced the current on-disk zarrs):
+# vars gh/prmsl/q/t/t2m/tp_accum/u/u10/v/v10/w, pressure_level [500,700,850,925,1000].
+# VVEL (`w`) IS included — it is published in BOTH the old merged and new AIGFS
+# formats, so keeping it preserves variable-for-variable uniformity.
+
+source: graphcast_history
+
+time:
+  date: "20250101-20260420"
+  cycle: [12]
+  steps: all
+
+variables:
+  # ── 850 hPa synoptic flow ─────────────────────────────────────
+  - name: pl_850
+    levtype: pl
+    levels: ["850"]
+    params: [UGRD, VGRD, TMP, SPFH, HGT]
+  # ── Boundary-layer profile (1000 hPa) ─────────────────────────
+  - name: pl_1000
+    levtype: pl
+    levels: ["1000"]
+    params: [UGRD, VGRD, TMP, SPFH, HGT]
+  # ── Mid-tropospheric flow (500 hPa) ───────────────────────────
+  - name: pl_500
+    levtype: pl
+    levels: ["500"]
+    params: [UGRD, VGRD, TMP, HGT]
+  # ── Vertical motion (VVEL — present in BOTH formats) ──────────
+  - name: vvel_profile
+    levtype: pl
+    levels: ["500", "700", "850", "925"]
+    params: [VVEL]
+  # ── Reference 10 m wind ───────────────────────────────────────
+  - name: wind_10m
+    levtype: hag
+    params: [UGRD, VGRD]
+  # ── 2 m temperature ───────────────────────────────────────────
+  - name: temp_2m
+    levtype: hag
+    params: [TMP]
+  # ── Mean sea-level pressure ───────────────────────────────────
+  - name: pressure_msl
+    levtype: atm
+    params: [PRMSL]
+  # ── Accumulated precipitation ─────────────────────────────────
+  - name: precip
+    levtype: sfc
+    params: [APCP]
+
+download:
+  output_dir: /Users/zmy/pycharm/climate_pipeline/climate_data
+  workers: 8
+  gap_tolerance: 0
+  timeout_seconds: 120
+  max_attempts: 4
+  init_concurrency: 2

@@ -17,7 +17,7 @@
 # ── Step 说明 ─────────────────────────────────────────────────────────────────
 # Step coverage: 0..384h by 6h. f000 开始（步长零填充为三位，如 f006）。
 type: graphcast
-name: graphcast-history
+name: graphcast
 description: NOAA NWS GraphCast 0.25° merged (pres+sfc) — early archive (2024-02-05 ~ 2026-04-18)
 index_url_template: >-
   https://noaa-nws-graphcastgfs-pds.s3.amazonaws.com/graphcastgfs.{date}/{cycle:02d}/forecasts_13_levels/graphcastgfs.t{cycle:02d}z.pgrb2.0p25.f{step:03d}.idx

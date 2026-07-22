@@ -110,8 +110,8 @@ def test_gfs_from_dict_renders_split_urls():
     ("aifs",            "AifsSource", "aifs"),
     ("ifs",             "AifsSource", "ifs"),
     ("gfs",             "GfsSource",  "gfs"),
-    ("graphcast_pres",  "GfsSource",  "graphcast"),
-    ("graphcast_sfc",   "GfsSource",  "graphcast"),
+    ("graphcast_history", "GfsSource",             "graphcast"),
+    ("graphcast_merged",  "GraphcastMergedSource", "graphcast-merged"),
     ("hrrr",            "HrrrSource", "hrrr"),
 ])
 def test_shipped_source_yaml_loads(name, expected_cls, expected_type):
