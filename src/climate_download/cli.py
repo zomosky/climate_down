@@ -32,6 +32,7 @@ from climate_download.config import _resolve_symbolic_date
 from climate_download.jobs import run_job
 from climate_download.logging_setup import configure_logging
 from climate_download.sources import SOURCE_REGISTRY, Source
+from climate_download.sources._http import build_client
 
 __all__ = ["build_parser", "main"]
 
@@ -345,7 +346,7 @@ def cmd_list_steps(args: argparse.Namespace) -> int:
                 - dt.timedelta(days=2)).strftime("%Y%m%d")
     else:
         date = _resolve_symbolic_date(args.date)
-    with httpx.Client(timeout=30.0) as client:
+    with build_client(30.0) as client:
         steps = source.list_available_steps(
             client, date=date, cycle=args.cycle,
         )
@@ -379,7 +380,7 @@ def cmd_list_variables(args: argparse.Namespace) -> int:
                 - dt.timedelta(days=2)).strftime("%Y%m%d")
     else:
         date = _resolve_symbolic_date(args.date)
-    with httpx.Client(timeout=60.0) as client:
+    with build_client(60.0) as client:
         variables = source.list_available_variables(
             client, date=date, cycle=args.cycle, step=args.step,
         )

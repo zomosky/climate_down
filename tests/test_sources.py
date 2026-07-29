@@ -466,3 +466,15 @@ def test_render_variables_yaml_groups_by_levtype_and_emits_levels():
     # atm is levelless: no `levels` key.
     atm = next(g for g in body["variables"] if g["levtype"] == "atm")
     assert "levels" not in atm
+
+
+def test_build_client_disables_keepalive():
+    """死池 bug 修复:build_client 禁用连接 keepalive(池 max_keepalive=0),
+    网络抖动后不会残留半死连接被复用而 SSL EOF、也不会 keepalive 槽被死连接占满
+    而 PoolTimeout 卡死——每个请求全新连接、用完即关。"""
+    from climate_download.sources._http import build_client
+    c = build_client(60.0)
+    try:
+        assert c._transport._pool._max_keepalive_connections == 0
+    finally:
+        c.close()

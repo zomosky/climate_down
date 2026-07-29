@@ -21,9 +21,29 @@ from tenacity import (
     wait_exponential,
 )
 
-__all__ = ["TRANSIENT_HTTP_EXCEPTIONS", "request_with_retry"]
+__all__ = ["TRANSIENT_HTTP_EXCEPTIONS", "build_client", "request_with_retry"]
 
 _log = structlog.get_logger(__name__)
+
+
+def build_client(timeout: float = 60.0, **kwargs: object) -> httpx.Client:
+    """An ``httpx.Client`` with connection **keepalive disabled**.
+
+    Every request opens a fresh connection and closes it, so a network blip
+    (Wi-Fi switch, transient drop) can never leave a half-open connection
+    pooled to be picked later and fail with ``SSL: UNEXPECTED_EOF_WHILE_READING``
+    / ``RemoteProtocolError`` — the "dead pool" that used to keep failing every
+    request until the process was killed and restarted with a fresh pool.
+    Downloads are bandwidth-bound (international egress ~1 MB/s), so the extra
+    per-request TCP+TLS handshake (~200 ms) is negligible, and the pool can no
+    longer wedge on ``PoolTimeout`` when every keepalive slot holds a dead
+    connection.
+    """
+    return httpx.Client(
+        timeout=timeout,
+        limits=httpx.Limits(max_keepalive_connections=0),
+        **kwargs,  # type: ignore[arg-type]
+    )
 
 # httpx.TransportError covers ConnectError / ReadError / RemoteProtocolError
 # / WriteError / NetworkError / ProxyError; TimeoutException covers the

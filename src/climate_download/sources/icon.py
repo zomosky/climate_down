@@ -48,7 +48,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from climate_download.grib.index import IndexRecord
 from climate_download.grib.partial import PartialDownloader
-from climate_download.sources._http import request_with_retry
+from climate_download.sources._http import build_client, request_with_retry
 from climate_download.sources.base import BaseSource, StepDownloadResult
 from climate_download.sources.registry import register
 
@@ -278,7 +278,7 @@ class IconSource(BaseSource, BaseModel):
         payloads: dict[int, bytes] = {}
         compressed_bytes = 0
 
-        with httpx.Client(timeout=self.timeout_seconds) as client:
+        with build_client(self.timeout_seconds) as client:
             workers = max(1, min(self.workers, len(urls)))
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 futures = {

@@ -48,6 +48,7 @@ from climate_download.grib import (
     filter_records,
 )
 from climate_download.sources import Source
+from climate_download.sources._http import build_client
 
 __all__ = [
     "JobFailure",
@@ -355,9 +356,9 @@ def _run_init(
     results: list[JobResult] = []
     failures: list[JobFailure] = []
     try:
-        with httpx.Client(timeout=timeout) as client, \
+        with build_client(timeout) as client, \
                 PartialDownloader(
-                    client=httpx.Client(timeout=timeout),
+                    client=build_client(timeout),
                     max_workers=config.download.workers,
                     max_attempts=config.download.max_attempts,
                     # The per-step byte-range bar is suppressed when the

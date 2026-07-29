@@ -84,7 +84,11 @@ class PartialDownloader:
         if max_attempts < 1:
             raise ValueError("max_attempts must be >= 1")
         self._owns_client = client is None
-        self._client = client or httpx.Client(timeout=timeout)
+        # keepalive disabled: a network blip can never leave a half-open
+        # connection pooled to fail later with SSL EOF (see sources._http.build_client).
+        self._client = client or httpx.Client(
+            timeout=timeout, limits=httpx.Limits(max_keepalive_connections=0)
+        )
         self._max_workers = max_workers
         self._max_attempts = max_attempts
         self._progress = progress
