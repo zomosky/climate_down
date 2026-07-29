@@ -31,17 +31,14 @@ from climate_download.sources import (
 # --- Registry --------------------------------------------------------------
 
 def test_builtin_sources_registered():
-    assert set(list_sources()) >= {"aifs", "gfs", "graphcast", "hrrr", "ifs"}
+    assert set(list_sources()) >= {"aifs", "gfs", "hrrr", "ifs"}
 
 
 def test_protocol_aliases_share_implementation():
-    # 'ifs' and 'aifs' both bind to AifsSource (ECMWF open-data JSONL protocol);
-    # 'graphcast' and 'gfs' both bind to GfsSource (NOAA wgrib2-idx protocol).
+    # 'ifs' and 'aifs' both bind to AifsSource (ECMWF open-data JSONL protocol).
     # Locked in so future renames don't silently break the documented YAML type names.
     assert get_source("ifs") is get_source("aifs")
     assert get_source("ifs").__name__ == "AifsSource"
-    assert get_source("graphcast") is get_source("gfs")
-    assert get_source("graphcast").__name__ == "GfsSource"
 
 
 def test_register_rejects_duplicate():
@@ -110,8 +107,6 @@ def test_gfs_from_dict_renders_split_urls():
     ("aifs",            "AifsSource", "aifs"),
     ("ifs",             "AifsSource", "ifs"),
     ("gfs",             "GfsSource",  "gfs"),
-    ("graphcast_history", "GfsSource",             "graphcast"),
-    ("graphcast_merged",  "GraphcastMergedSource", "graphcast-merged"),
     ("hrrr",            "HrrrSource", "hrrr"),
 ])
 def test_shipped_source_yaml_loads(name, expected_cls, expected_type):

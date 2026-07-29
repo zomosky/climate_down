@@ -26,7 +26,6 @@ from climate_download.sources.registry import register
 __all__ = ["GfsSource"]
 
 
-@register("graphcast")
 @register("gfs")
 class GfsSource(BaseSource, BaseModel):
     """Adapter for NOAA GFS-style sources on AWS S3.
