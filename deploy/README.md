@@ -5,6 +5,13 @@
 It mirrors the restore side (`climate_restorage/deploy/restore_scan.sh`) — same
 "host crontab → `.sh` → `docker exec`" pattern, same shared data root.
 
+Production recovery has two additional entry points:
+
+- `reconcile_sources.py` validates recent NWP manifests and raw GRIB boundaries,
+  then invokes `download_run.sh` only for an unhealthy init;
+- `recover_all_on_boot.sh` runs the complete boot sequence: DWD first, Himawari,
+  remaining NWP, restore scans, and ERA5.
+
 The two components need **no coordination**: download writes a
 `*.manifest.json` per init; the restore `scan-once` cron sees it on its next
 tick and slices it to Zarr. The manifest is the only signal.
@@ -101,8 +108,9 @@ China time = UTC+8, so the data lands early next China morning.
    40 2 * * *  PUBLISH_LAG_HOURS=6 LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/aifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_aifs.log 2>&1
    40 4 * * *  PUBLISH_LAG_HOURS=6                 /home/zhangmingyu/operation/download_run.sh config/jobs/aifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_aifs.log 2>&1
 
-   # DWD ICON global (operational, near-real-time only), 12z only — 2 tries.
-   # No LOOKBACK_DAYS — DWD only keeps ~24 h, so older days can't be re-fetched.
+   # DWD ICON global (operational, near-real-time only), 12z only — 2 fixed tries.
+   # The persistent reconciler below adds boot recovery and 30-minute checks while
+   # the current per-cycle run is still inside DWD's roughly 24-hour window.
    50 2 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
    50 4 * * *  /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
 
@@ -126,6 +134,86 @@ China time = UTC+8, so the data lands early next China morning.
    30 14 * * *  CYCLE=0 /srv/climate/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /var/log/climate/download_gfs.log 2>&1
    ```
 
+## Persistent reconciliation and boot recovery
+
+Fixed daily cron lines do not replay jobs missed while the server was powered
+off. Install the repository's systemd units in addition to the normal source
+schedules:
+
+```sh
+# repository artifacts → stable host paths
+install -m 0755 deploy/reconcile_sources.py /home/zhangmingyu/operation/reconcile_sources.py
+install -m 0755 deploy/recover_all_on_boot.sh /home/zhangmingyu/operation/recover_all_on_boot.sh
+
+# requires root once; the services themselves run as zhangmingyu
+sudo install -m 0644 deploy/systemd/climate-source-reconcile.service /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/climate-source-reconcile.timer /etc/systemd/system/
+sudo install -m 0644 deploy/systemd/climate-boot-recovery.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now climate-source-reconcile.timer
+sudo systemctl enable climate-boot-recovery.service
+```
+
+The timer uses `OnBootSec=5min`, `OnCalendar=*:17,47`, and
+`Persistent=true`. The boot service waits up to five minutes for `zhangmy-dev`,
+then runs every idempotent production recovery entry point. The NWP reconciler
+checks the exact expected step sets, `completed_at`, zero failures, and file
+sizes. The downloader validates `GRIB…7777` when writing; a manual deep check
+can add `--verify-boundaries`. Boundary reads are not part of the half-hour
+timer because a kernel-level storage wait could otherwise pin the recovery lock.
+Healthy inits are local no-ops: no upstream request, manifest rewrite, or repeat
+Zarr build.
+
+Coverage is deliberately product-specific:
+
+| source | cycles | expected steps | recent window |
+|---|---:|---:|---:|
+| `dwd-icon` | 00z, 12z | 113 | newest fully published init only |
+| `gfs-0p25` | 12z | 209 | latest + previous 2 days |
+| `aifs-single` | 12z | 61 | latest + previous 2 days |
+| `ifs-hres` | 00z, 12z | 85 | latest + previous 2 days |
+
+DWD is first in the policy list and again in the boot sequence. Its current
+init is checked every 30 minutes, which closes the outage gap before the next
+same-cycle run overwrites the upstream directory. Looking back further is not
+useful once DWD has overwritten the run; the cloud-backed sources retain their
+two-day reconciliation window.
+
+Validate before enabling:
+
+```sh
+python3 /home/zhangmingyu/operation/reconcile_sources.py --dry-run
+# Manual deep check only; do not schedule this on a host with unresolved I/O waits:
+python3 /home/zhangmingyu/operation/reconcile_sources.py --dry-run --verify-boundaries
+sudo systemd-analyze verify \
+  /etc/systemd/system/climate-source-reconcile.service \
+  /etc/systemd/system/climate-source-reconcile.timer \
+  /etc/systemd/system/climate-boot-recovery.service
+systemctl list-timers climate-source-reconcile.timer --all
+journalctl -u climate-boot-recovery.service -u climate-source-reconcile.service --since today
+```
+
+If root is temporarily unavailable, use this cron fallback; remove these two
+lines after enabling the systemd units (the locks make overlap safe, but duplicate
+schedulers add noise):
+
+```cron
+@reboot /bin/bash /home/zhangmingyu/operation/recover_all_on_boot.sh
+17,47 * * * * /usr/bin/python3 /home/zhangmingyu/operation/reconcile_sources.py >> /home/zhangmingyu/operation/logs/reconcile_sources.log 2>&1
+```
+
+Rollback is limited to the new recovery layer and does not touch the ordinary
+per-source schedules or data:
+
+```sh
+sudo systemctl disable --now climate-source-reconcile.timer climate-boot-recovery.service
+sudo rm /etc/systemd/system/climate-source-reconcile.service \
+  /etc/systemd/system/climate-source-reconcile.timer \
+  /etc/systemd/system/climate-boot-recovery.service
+sudo systemctl daemon-reload
+# Restore the timestamped crontab backup if the cron fallback was used.
+```
+
 ## Configuration (environment-overridable)
 
 | var                 | default                   | meaning                                        |
@@ -134,9 +222,9 @@ China time = UTC+8, so the data lands early next China morning.
 | `DOWNLOAD_DIR`      | `/workspace/climate_down` | download project dir inside the container      |
 | `CYCLE`             | `12`                      | forecast cycle (UTC hour) — also names the lock/log |
 | `PUBLISH_LAG_HOURS` | `5`                       | hrs after `CYCLE`:00 UTC when the run is fully out (date-boundary only) |
-| `LOOKBACK_DAYS`     | `0`                       | also re-verify the previous N days' `CYCLE`z this run (self-heal; resume makes it cheap). GFS: use `2`; DWD ICON: keep `0` (no history) |
+| `LOOKBACK_DAYS`     | `0`                       | also re-verify the previous N days' `CYCLE`z this run (self-heal; resume makes it cheap). Cloud-backed sources use `2`; DWD is reconciled frequently while its current run still exists |
 | `INIT_DATE`         | *(host-computed)*         | set `YYYYMMDD` to fetch a specific init (backfill) |
-| `LOCK`              | `/tmp/download_<job>_<cc>z.lock` | per-(job,cycle) flock (in-container)     |
+| `LOCK`              | `/home/zhangmingyu/operation/lock/download_<job>_<cc>z.lock` | per-(job,cycle) host flock |
 
 Output dir and steps are baked into the `*_ser.yaml`; date/cycle come from the
 host (env above). Extra CLI args after the job path pass straight through.
@@ -164,21 +252,26 @@ Resilience is layered — nothing is re-downloaded that already completed:
 
 The only thing a single daily cron can't do alone is **re-target an init that
 was interrupted on a previous day** (the next day's run points at a new date).
-Two ways to cover that, both cheap because of resume:
+The recovery layer covers that in three complementary ways, all cheap because
+of resume:
 
 - **`LOOKBACK_DAYS=2`** on the GFS cron line (recommended): each run also
   re-verifies the last 2 days' 12z. A day that died mid-run (even before any
   manifest was written) is completed by the next run automatically.
 - **Extra same-day catch-up line** (e.g. `30 5 * * *`): re-resolves to the same
   latest 12z and finishes it, in case the first run was cut short.
+- **Persistent reconciliation**: every 30 minutes, plus five minutes after boot,
+  validate the latest expected init and invoke an explicit `(date, cycle)` repair
+  only when the manifest, expected step set, or raw file size is unhealthy.
 
 How it heals end-to-end: an interrupted run leaves partial GRIB (and either no
 manifest, or one carrying `failures`). Restore **skips** such an init (its
 `scan-once` requires `completed_at` set and `failures` empty), so no partial
 Zarr is ever built. When a later run completes the init, it atomically rewrites
 a clean manifest → restore's next tick builds the full Zarr. DWD ICON is the
-exception: it keeps only ~24 h upstream, so keep `LOOKBACK_DAYS=0` there and
-rely on same-day catch-up only.
+exception: it keeps only ~24 h upstream, so historical lookback cannot recover
+an overwritten run. The persistent reconciler and boot service repeatedly
+target the newest fully published 00z/12z while it is still available.
 
 ## Run it once by hand / backfill
 

@@ -108,6 +108,11 @@ download/
 │       └── partial.py          # PartialDownloader：byte-range 并发下载
 ├── scripts/
 │   └── build_s2s_catalogue.py  # 重抓 ECDS constraints,刷新 _capabilities.json
+├── deploy/
+│   ├── download_run.sh          # 单源下载入口（宿主机 → zhangmy-dev）
+│   ├── reconcile_sources.py     # 近期 init 完整性检查 + 缺失自动补录
+│   ├── recover_all_on_boot.sh   # 开机全链路恢复（NWP/卫星/切片/ERA5）
+│   └── systemd/                 # 开机服务 + Persistent 半小时巡检 timer
 ├── examples/
 │   ├── aifs_partial_download.py   # CLI 向后兼容 shim（→ climate-download run）
 │   ├── plot_wind_speed.py         # 100 m 风速可视化
@@ -771,6 +776,24 @@ uv run climate-download s2s --config config/jobs/s2s_renewables_ukmo.yaml \
 > - 所有 S2S 中心有 ≥48h 数据发布延迟；目标日期距今不足 48h 时 ECDS 会返回空结果。
 > - ECMWF 若要测试 12z 起报，将最后两条命令中 `--cycle 0` 改为 `--cycle 12` 即可；CMA / IAP-CAS / NCEP / UKMO 仅发布 00z。
 > - 上述 10 条命令产物默认落在 `output/<源>/<日期>/<cycle>z/` 下，互不覆盖，可以串行或并行运行。
+
+### 8.2 生产自愈与服务器重启恢复
+
+生产恢复不再只依赖固定时刻的 cron。`deploy/reconcile_sources.py` 每 30 分钟按 UTC
+计算各源最新应到的 init，检查 manifest 是否完整、step 集是否符合产品契约及原始文件
+大小；只有异常 init 才调用 `download_run.sh` 精确补录。下载落盘时仍强制校验
+`GRIB…7777`，手工深检可额外传 `--verify-boundaries`。当前覆盖：
+
+- `dwd-icon`：00z、12z，各 113 步；优先检查，避免超过 DWD 约 24 小时保留窗；
+- `gfs-0p25`：12z、209 步，回看 2 天；
+- `aifs-single`：12z、61 步，回看 2 天；
+- `ifs-hres`：00z、12z，各 85 步，回看 2 天。
+
+`deploy/recover_all_on_boot.sh` 在服务器启动且 `zhangmy-dev` 可用后，依次恢复 DWD、
+Himawari 实时帧、其余 NWP、Himawari 最近 5 天日库、四源 Zarr 切片及 ERA5。任一阶段
+失败会记录但不阻断后续源。推荐用 `deploy/systemd/` 中的 boot service 与
+`Persistent=true` timer；完整安装、回滚、日志和 cron 回退见
+[`deploy/README.md`](deploy/README.md#persistent-reconciliation-and-boot-recovery)。
 
 ---
 

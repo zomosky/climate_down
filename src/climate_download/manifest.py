@@ -165,11 +165,17 @@ def _product_signature(payload: dict[str, Any]) -> tuple:
     per-file download stats (``http_requests`` / ``savings_pct`` / ``records_*``
     / ``selected_breakdown`` — these differ between a fresh download and a
     resume-only re-run of the very same files). What remains is each step's
-    ``(step_hours, filename, sha256)`` plus the ``(step, phase)`` of any failure:
-    the set of GRIB messages a consumer sees, and whether the init is ready.
+    ``(step_hours, filename, size_bytes, sha256)`` plus the ``(step, phase)`` of
+    any failure: the set of GRIB messages a consumer sees, whether its metadata
+    matches the file on disk, and whether the init is ready.
     """
     files = sorted(
-        (f.get("step_hours"), Path(str(f.get("path", ""))).name, f.get("sha256"))
+        (
+            f.get("step_hours"),
+            Path(str(f.get("path", ""))).name,
+            f.get("size_bytes"),
+            f.get("sha256"),
+        )
         for f in payload.get("files", [])
     )
     fails = sorted(
@@ -197,7 +203,7 @@ def write_manifest(
 
     No-op guard: if a manifest already exists at the target path with an
     identical *product signature* (:func:`_product_signature` — same step files +
-    sha256 + failures), the write is skipped so the file's mtime is left
+    size + sha256 + failures), the write is skipped so the file's mtime is left
     untouched. This stops a resume-only re-run (e.g. an extra cron pass that
     found nothing new) from needlessly re-triggering the downstream restore
     rebuild, which keys off manifest-vs-output mtime.

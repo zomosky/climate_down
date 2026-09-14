@@ -1,0 +1,17 @@
+[Unit]
+Description=Reconcile recent climate NWP source initializations
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=zhangmingyu
+Group=zhangmingyu
+ExecStart=/usr/bin/python3 /home/zhangmingyu/operation/reconcile_sources.py
+TimeoutStartSec=infinity
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+StandardOutput=append:/home/zhangmingyu/operation/logs/reconcile_sources.log
+StandardError=append:/home/zhangmingyu/operation/logs/reconcile_sources.log
+

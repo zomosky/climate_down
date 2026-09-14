@@ -313,9 +313,20 @@ class IconSource(BaseSource, BaseModel):
                     continue
                 fh.write(data)
                 written += len(data)
+        _log.info(
+            "icon_step_transfer",
+            date=date,
+            cycle=cycle,
+            step=step,
+            compressed_bytes=compressed_bytes,
+            output_bytes=written,
+        )
         return StepDownloadResult(
             output_path=output_path,
-            bytes_downloaded=compressed_bytes,
+            # JobResult.bytes_downloaded is persisted as manifest.size_bytes,
+            # so it must describe the decompressed file on disk. Keep the
+            # actual wire size in the structured transfer log above.
+            bytes_downloaded=written,
             http_requests=len(urls),
         )
 

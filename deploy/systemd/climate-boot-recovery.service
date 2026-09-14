@@ -1,0 +1,17 @@
+[Unit]
+Description=Recover all climate data sources after server startup
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=zhangmingyu
+Group=zhangmingyu
+ExecStart=/bin/bash /home/zhangmingyu/operation/recover_all_on_boot.sh
+TimeoutStartSec=infinity
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target

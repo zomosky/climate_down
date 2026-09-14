@@ -1,0 +1,13 @@
+[Unit]
+Description=Check recent climate NWP source initializations every 30 minutes
+
+[Timer]
+OnBootSec=5min
+OnCalendar=*:17,47
+Persistent=true
+AccuracySec=1min
+RandomizedDelaySec=30s
+Unit=climate-source-reconcile.service
+
+[Install]
+WantedBy=timers.target

@@ -141,7 +141,7 @@ def test_download_step_decompresses_and_concatenates(tmp_path: Path):
     assert out.read_bytes().startswith(b"GRIB")
     assert out.read_bytes().endswith(b"7777")
     assert res.http_requests == 2
-    assert res.bytes_downloaded == len(t2m) + len(u10)  # compressed bytes moved
+    assert res.bytes_downloaded == out.stat().st_size
 
 
 @respx.mock
@@ -161,7 +161,7 @@ def test_download_step_tolerates_per_file_404(tmp_path: Path):
         date="20260507", cycle=0, step=0,
     )
     assert out.read_bytes() == bz2.decompress(t2m)  # only the present file
-    assert res.bytes_downloaded == len(t2m)
+    assert res.bytes_downloaded == out.stat().st_size
 
 
 @respx.mock

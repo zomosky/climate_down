@@ -100,8 +100,10 @@ variables:
 download:
   # Server output root (shared with climate_restorage's download_root).
   output_dir: /climate_data
-  workers: 8
+  # workers 8→4 + init-concurrency 4→2(见 supervisor):China↔GCS 带宽是硬顶,
+  # 高并发不提速却制造 SSL 断连(尤其 f243-384 后段大文件),降并发=断连少+吞吐不变。
+  workers: 4
   gap_tolerance: 0
   timeout_seconds: 120
-  max_attempts: 4
+  max_attempts: 6  # 4→6:多给瞬时 SSL 断连几次重试,单趟内恢复更多
   init_concurrency: 1
