@@ -1,0 +1,6 @@
+type: ecmwf-probabilities
+name: aifs-ens-probabilities
+model: aifs-ens
+description: ECMWF AIFS ENS 事件概率（%，瞬时、24小时及48/72/120小时统计窗口，00/12 UTC）
+url_template: >-
+  https://storage.googleapis.com/ecmwf-open-data/{date}/{cycle:02d}z/aifs-ens/0p25/enfo/{date}{cycle:02d}0000-{step}h-enfo-ep.{suffix}

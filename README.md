@@ -1,5 +1,9 @@
 # climate_download
 
+ENS 事件概率新增 `ifs-ens-probabilities`（5 个降水/阵风字段）与
+`aifs-ens-probabilities`（14 个事件概率参数）。多时间包、原始窗口及每天
+北京时间 05:15/17:15 的调度见 [ENS 接入说明](deploy/ENS_PROBABILITIES.md)。
+
 `climate_pipeline` 下的气象数据下载子项目，负责把外部数值预报产品（首批 ECMWF AIFS）从公开镜像拉到本地，**在下载阶段**就完成变量与字节级裁剪，并向下游 `cliamte_data` 加工管道交付干净、体量合适的 GRIB 文件 + manifest 触发凭据。
 
 完整的项目目标、范围、路线图见 [`PROJECT.md`](./PROJECT.md)。本文聚焦 **配置（YAML）** 与 **函数（Python API）** 的使用方式。
@@ -293,7 +297,7 @@ download:
 - `today / yesterday` 在**展开时**才解析（按 UTC 当前时间），所以同一份配置在不同日期跑会自动滚动。
 - `steps` 范围里那些**源还没发布的 step**（HEAD `.index` → 404）会被自动跳过并打 warning，不会让作业失败。这一行为对回填很关键 —— 写一个宽泛的 `0-360` 也能容错。
 - `steps: "all"` 时不再做 HEAD 探测，而是直接拉 bucket LIST（AIFS ~61 step / GFS ~209 step），结果按整数升序去重返回。`_listing.py` 自动识别 S3 与 GCS 两种方言（命名空间、分页参数、bucket 位置）；新源若想接入只要 host 命中已知模式即可，否则 `list_available_steps` 返回 `None`，run_job 会日志 warning 并跳过该 init —— 不会阻塞同批其它 init。
-- 历史日期可直接写 `date: 20260101`；可用范围取决于数据源 bucket 的保留策略（AIFS open-data 在 GCS 上滚动保留约几个月）。真正的多年回填请考虑 ERA5 / MARS（接入新 source 即可）。
+- 历史日期可直接写 `date: 20260101`；可用范围取决于具体入口和产品。ECMWF 官网采用短期滚动窗口，Google 镜像当前保有更早历史，不能统一按“几个月”推断；部分旧索引还可能与 GRIB 不一致。ENS 概率的实测起报范围与限制见 [部署说明](deploy/ENS_PROBABILITIES.md#发布时间与历史可获取范围2026-10-16-核查)。ERA5 属于再分析，不能替代同日起报的历史预报；MARS 历史访问需另行核对权限。
 
 #### `variables`
 

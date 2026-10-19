@@ -1,0 +1,6 @@
+type: ecmwf-probabilities
+name: ifs-ens-probabilities
+model: ifs
+description: ECMWF IFS ENS 降水与阵风事件概率（%，00/12 UTC，两包合计29个24小时窗口）
+url_template: >-
+  https://storage.googleapis.com/ecmwf-open-data/{date}/{cycle:02d}z/ifs/0p25/enfo/{date}{cycle:02d}0000-{step}h-enfo-ep.{suffix}

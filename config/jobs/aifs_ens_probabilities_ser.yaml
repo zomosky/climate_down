@@ -1,0 +1,16 @@
+# Same 00/12 UTC operational cycles as IFS; AIFS 06/18 cycles are not scheduled here.
+source: aifs_ens_probabilities
+time:
+  cycle: 12
+  steps: all
+variables:
+  - name: event_probabilities
+    levtype: sfc
+    params: [tpg1, tpg5, tpg10, tpg20, tpg25, tpg50, tpg100, 2tl273, 10spg10, 10spg15, tpl01, tprl1, tprg3, tprg5]
+download:
+  output_dir: /climate_data
+  workers: 4
+  init_concurrency: 1
+  timeout_seconds: 120
+  max_attempts: 4
+  gap_tolerance: 0

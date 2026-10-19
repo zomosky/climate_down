@@ -1,0 +1,16 @@
+# Date/cycle supplied by probabilities_run.py. 240/360 are bundles, not forecast steps.
+source: ifs_ens_probabilities
+time:
+  cycle: 12
+  steps: all
+variables:
+  - name: rain_gust_probabilities
+    levtype: sfc
+    params: [tpg20, tpg50, tpg100, 10fgg15, 10fgg25]
+download:
+  output_dir: /climate_data
+  workers: 4
+  init_concurrency: 1
+  timeout_seconds: 120
+  max_attempts: 4
+  gap_tolerance: 0
