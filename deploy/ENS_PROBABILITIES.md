@@ -34,6 +34,10 @@ GRIB；仍读取索引检查上游字段，完整且内容不变的 manifest 保
 现有 `zhangmy-dev`，两个源依次运行。下载 workers=4、init_concurrency=1；
 重整 workers=1，并限制数值库线程。无新增常驻生产容器。
 
+日常概率下载与历史回填共用索引偏移校验：若上游 `.index` 的 em/ep/es 分块
+分别从 0 计数，先确认全部消息长度之和等于远端 GRIB 大小，再重建全局偏移，
+最后筛选概率消息。长度不符仍判下载失败，不放宽字段、窗口或 GRIB 完整性检查。
+
 **时区必须为 Asia/Shanghai**。本次已核对服务器 `/etc/localtime`；旧 crontab
 头部“UTC”说明已过时，不能按其注释换算时间。
 

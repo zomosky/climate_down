@@ -8,8 +8,11 @@ from __future__ import annotations
 from typing import Literal
 
 import httpx
+import structlog
 
+from climate_download.grib.ecmwf import normalize_offsets
 from climate_download.grib.index import IndexRecord
+from climate_download.sources._http import request_with_retry
 from climate_download.sources.aifs import AifsSource
 from climate_download.sources.registry import register
 
@@ -66,6 +69,15 @@ class EcmwfProbabilitySource(AifsSource):
 
     def fetch_records(self, client: httpx.Client, *, date: str, cycle: int, step: int) -> list[IndexRecord]:
         records = super().fetch_records(client, date=date, cycle=cycle, step=step)
+        if any(b.offset < a.end for a, b in zip(records, records[1:])):
+            # Rebuild the full em/ep/es sequence before filtering out other types.
+            # A truncated index must fail rather than invent message positions.
+            response = request_with_retry(client, "HEAD", self.build_data_url(date=date, cycle=cycle, step=step))
+            response.raise_for_status()
+            object_size = int(response.headers["Content-Length"])
+            records, mode = normalize_offsets(records, object_size)
+            structlog.get_logger(__name__).info("probability_offsets_rebuilt", source=self.name,
+                date=date, cycle=cycle, step=step, mode=mode, object_size=object_size)
         expected = expected_windows(self.model, step)
         selected = [r for r in records if (r.model_extra or {}).get("type") == "ep" and r.param in expected]
         seen: set[tuple[str, str | None]] = set()

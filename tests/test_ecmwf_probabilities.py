@@ -1,6 +1,7 @@
 """Probability bundles must be complete before manifest publication."""
 import json
 from pathlib import Path
+import struct
 
 import httpx
 import pytest
@@ -88,3 +89,66 @@ def test_missing_bundle_stays_a_manifest_failure(tmp_path, monkeypatch):
     manifest=json.loads(next(tmp_path.rglob("*.manifest.json")).read_text())
     assert [f["step_hours"] for f in manifest["files"]]==[240]
     assert manifest["failures"][0]["step"]==360
+
+
+def reset_index(model="aifs-ens", bundle=240):
+    """Mean, probability and spread indexes restart at zero in one GRIB."""
+    events = rows(model, bundle)
+    for i, event in enumerate(events):
+        event.update(_offset=i * 24, _length=24)
+    mean = dict(param="tpg50", levtype="sfc", type="em", step="24", _offset=0, _length=24)
+    spread = dict(mean, type="es")
+    return [mean, *events, spread]
+
+
+@respx.mock
+@pytest.mark.parametrize("model", ["ifs", "aifs-ens"])
+def test_reset_offsets_are_rebuilt_before_selecting_probability_messages(model):
+    records = reset_index(model)
+    url = "https://example.test/20261015/00/240"
+    respx.get(url + ".index").respond(text="\n".join(json.dumps(r) for r in records))
+    respx.head(url + ".grib2").respond(headers={"Content-Length": str(len(records) * 24)})
+    with httpx.Client() as client:
+        selected = source(model).fetch_records(client, date="20261015", cycle=0, step=240)
+    assert [r.offset for r in selected] == list(range(24, (len(records) - 1) * 24, 24))
+    assert all(r.model_extra["type"] == "ep" for r in selected)
+
+
+@respx.mock
+def test_reset_offsets_with_incomplete_object_coverage_fail_before_download():
+    records = reset_index()
+    url = "https://example.test/20261015/00/240"
+    respx.get(url + ".index").respond(text="\n".join(json.dumps(r) for r in records))
+    respx.head(url + ".grib2").respond(headers={"Content-Length": str(len(records) * 24 + 1)})
+    with httpx.Client() as client, pytest.raises(ValueError, match="lengths"):
+        source("aifs-ens").fetch_records(client, date="20261015", cycle=0, step=240)
+
+
+@respx.mock
+def test_reset_index_download_excludes_mean_and_spread_and_keeps_grib_boundaries(tmp_path):
+    from climate_download.grib.partial import PartialDownloader
+    from climate_download.probability_history import validate_subset
+
+    records = reset_index()
+    message = lambda payload: b"GRIB\0\0\0\2" + struct.pack(">Q", 24) + payload + b"7777"
+    probability = message(b"prob") * (len(records) - 2)
+    obj = message(b"mean") + probability + message(b"sprd")
+    url = "https://example.test/20261015/00/240"
+    respx.get(url + ".index").respond(text="\n".join(json.dumps(r) for r in records))
+    respx.head(url + ".grib2").respond(headers={"Content-Length": str(len(obj))})
+    requests = []
+    def download(request):
+        requests.append(request.headers["range"])
+        start, end = map(int, request.headers["range"].removeprefix("bytes=").split("-"))
+        return httpx.Response(206, content=obj[start:end + 1],
+                              headers={"Content-Range": f"bytes {start}-{end}/{len(obj)}"})
+    respx.get(url + ".grib2").mock(side_effect=download)
+    path = tmp_path / "probability.grib2"
+    with httpx.Client() as client, PartialDownloader(client, max_workers=1) as downloader:
+        src = source("aifs-ens")
+        selected = src.fetch_records(client, date="20261015", cycle=0, step=240)
+        src.download_step(downloader, records=selected, output_path=path, gap_tolerance=0,
+                          date="20261015", cycle=0, step=240)
+    assert path.read_bytes() == probability
+    assert requests == [f"bytes=24-{len(obj) - 25}"]
+    validate_subset(path, selected)

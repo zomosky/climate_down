@@ -14,6 +14,7 @@ from pathlib import Path
 import struct
 
 from climate_download.grib.index import IndexRecord, merge_ranges, parse_index_text
+from climate_download.grib.ecmwf import normalize_offsets
 from climate_download.grib.partial import PartialDownloader
 from climate_download.sources._http import build_client, request_with_retry
 from climate_download.sources.ecmwf_probabilities import expected_windows
@@ -35,29 +36,6 @@ def sha256(path: Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
-
-
-def normalize_offsets(records: list[IndexRecord], object_size: int) -> tuple[list[IndexRecord], str]:
-    """Repair concatenated em/ep/es indexes only if all lengths cover the object.
-
-    Normal global offsets may legitimately have gaps (e.g. an index that only
-    lists ep); do not silently rewrite those. A backwards/overlapping offset is
-    the legacy signal. Never guess offsets if the total does not match.
-    """
-    if any(r.length < 16 or r.offset < 0 for r in records):
-        raise ValueError("invalid GRIB index offset/length")
-    reset = any(b.offset < a.end for a, b in zip(records, records[1:]))
-    if not reset:
-        if any(r.end > object_size for r in records):
-            raise ValueError("index extends beyond GRIB object")
-        return records, "original"
-    if sum(r.length for r in records) != object_size:
-        raise ValueError("legacy index lengths do not cover the GRIB object")
-    result, offset = [], 0
-    for record in records:
-        result.append(record.model_copy(update={"offset": offset}))
-        offset += record.length
-    return result, "cumulative_lengths_verified"
 
 
 def event_field(param: str, window: str) -> tuple[str, int]:
