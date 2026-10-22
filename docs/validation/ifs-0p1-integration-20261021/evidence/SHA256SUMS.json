@@ -1,0 +1,170 @@
+{
+  "production/20261020_12z.json": {
+    "sha256": "980f7ea23574a7e932074911ffa14c61198e2577c8165f366489240ca7f07554",
+    "size": 2752
+  },
+  "production/20261020_12z-native-audit.json": {
+    "sha256": "7e1cfa83889f8a786fc0f9a71c48caa1f9315f3d588f4fd8f12567b8b6e3ab16",
+    "size": 170910
+  },
+  "production/prefix-native-audit.json": {
+    "sha256": "64b7d2807bc2593723199c48a0e79b3a238743f8243bb4151f3bf25defb10093",
+    "size": 15974
+  },
+  "production/20261020_12z-download.log": {
+    "sha256": "679c61a0fd0221fc2d397b9ceaa575b9b4604ce5d23af3db96877bcc9d323db7",
+    "size": 202362
+  },
+  "production/20261020_12z-restore.log": {
+    "sha256": "36ee73a1df42c948930e60211692c1a488022d90a30f04e2e3aab9125a82dc3a",
+    "size": 1187
+  },
+  "production/finish-first.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "size": 0
+  },
+  "production/resource-samples.jsonl": {
+    "sha256": "c3407f7b7720804c6266fab286b4cecb2d65af7f6167066ae764403fb02b360b",
+    "size": 86689
+  },
+  "production/resource-sampling.json": {
+    "sha256": "3f23e4560ea599d3fbfe0926e56c0bccf11917e99e41caac2872c04c9fee5df7",
+    "size": 464
+  },
+  "production/20261020_12z_ifs-hres-0p1.manifest.json": {
+    "sha256": "c56d7e314720a0ca1054b525aea67288e5c2be7f5c86cfb2f17a655074d34b65",
+    "size": 66521
+  },
+  "host/acceptance.json": {
+    "sha256": "97c94f5067f957f95070689b6a29fd2e2fe8d8702db6548e6a50454f78d80f26",
+    "size": 703
+  },
+  "host/acceptance-attempt1.json": {
+    "sha256": "b6486a5e38ca18f594285831f35672877c071cb5aa97f97913d7da6d8bb11d32",
+    "size": 543
+  },
+  "host/acceptance-attempt2.json": {
+    "sha256": "2a636253b2cbd26cc8aba1e1f43c365cf72aa8ba35a624dc7212ae919f6d5c6a",
+    "size": 559
+  },
+  "host/acceptance-launch.json": {
+    "sha256": "26bf06982e4aed97935eacb418de6ccf3ec2cd6ed22ce6fdf461a8edb3138929",
+    "size": 538
+  },
+  "host/acceptance-retry-launch.json": {
+    "sha256": "4ccbfae17da15e69c21543fb9f0e8f1126262ef318d7382b9cd33d13d647061f",
+    "size": 317
+  },
+  "host/acceptance-retry3-launch.json": {
+    "sha256": "fb395229ba6f8e33e1ed724b774b688b10bea019ca0c532a5053e44079c55c02",
+    "size": 466
+  },
+  "host/service-baseline.json": {
+    "sha256": "a598b7f32586780469373e341b57481323cb38415beff39e849d552e3d325428",
+    "size": 974
+  },
+  "host/service-activation.json": {
+    "sha256": "68400fc9c1ee12fc9277789f3a0235d7db3c9138609c0ab58dce192e35f3d241",
+    "size": 1133
+  },
+  "host/service-image.json": {
+    "sha256": "dec6186b8b7bde0c7bb5f27f22718148661b187155ba75b8b620a23139adb4fc",
+    "size": 1157
+  },
+  "host/production_after-025-query.json": {
+    "sha256": "273c8e12f4b4fee92c6a8000091b790911035b4acc1ef6533e5e9adba2ea68a2",
+    "size": 12190
+  },
+  "host/operations-activation.json": {
+    "sha256": "c47461f6966730374c27be7297edd4e159ac97efaad22eab7a37fd1c58b45ccb",
+    "size": 1874
+  },
+  "host/20261020_12z-api_audit.log": {
+    "sha256": "53096f58f8c0163d70b70f4a952f36b0f932a4f25c4b7bc596cb4ac35695e3fb",
+    "size": 5681
+  },
+  "host/20261020_12z-native_audit.log": {
+    "sha256": "cccc3024e1790673763d822169cbc4f6eabade6f5183408c1019496a2cfa74bd",
+    "size": 4094
+  },
+  "host/20261020_12z-api_audit-attempt1.log": {
+    "sha256": "8ff32df5f4836cb8e6317419a106c7cd8efd185fbd72f95fa9c2448936529da4",
+    "size": 1632
+  },
+  "host/20261020_12z-api_audit-attempt2.log": {
+    "sha256": "1d538b6d1facb67e5fdedadb7bba6ff315413c1a35ef98e48ebff7de78551440",
+    "size": 1635
+  },
+  "api/sites_15min.json": {
+    "sha256": "e5e90acf1d4c1a2ae061be88a67262d45a2fb1cbcacd708c19ff515d747c42b9",
+    "size": 33008
+  },
+  "api/variable_catalog.json": {
+    "sha256": "b10029784fef4794d96897ed8925f8ffbaacafdee7004b8cb877fe0fbe54deb5",
+    "size": 10206
+  },
+  "api/train.json": {
+    "sha256": "8219fb7818e381d71b030c2348e964be02995e9260d1b30bd68120c429ca7c4c",
+    "size": 1836
+  },
+  "api/grid.json": {
+    "sha256": "74ab009af4d991dc42a23dd5eeb4d5ae236731490da4d6de4005200be0f5d6b5",
+    "size": 746
+  },
+  "api/api-acceptance.json": {
+    "sha256": "91071bcbe1bb129aab3a2ad1c47d18178d395e1ac7c701de42d04ef26dc6a01a",
+    "size": 6762
+  },
+  "api/monitor.json": {
+    "sha256": "68ec825d4e4820bb2b88f8d7637d54a7366a4fa9f26303a2ce29ecd2b593f7ba",
+    "size": 2928
+  },
+  "api/province_weighted.json": {
+    "sha256": "2d37f7c26ffe69466de137c4e4590bd19dbc92b74f3d3e68d328d848e206893d",
+    "size": 2157
+  },
+  "api/sites_15min.nc": {
+    "sha256": "35adddf0812037c02426213de42c0a3c3f5c14e090640dcd87d52b69e55bc04b",
+    "size": 76373
+  },
+  "api/source_metadata.json": {
+    "sha256": "ec840a51e43e5838d68d58d587272f7761d2ad3a426e295e0c1f8799bca3de44",
+    "size": 8967
+  },
+  "api/train_mix.json": {
+    "sha256": "8219fb7818e381d71b030c2348e964be02995e9260d1b30bd68120c429ca7c4c",
+    "size": 1836
+  },
+  "api/sites_15min.parquet": {
+    "sha256": "b14a5d58ead09e4c10dcea926e7c95a9d53e745b0385028b497316a048dee63b",
+    "size": 24465
+  },
+  "api/native_sites.json": {
+    "sha256": "98683a78eb94000b5402e3ef8a860cc81269ea3e7a6baf5abbcde7cac9e6eb33",
+    "size": 2795
+  },
+  "api/health.json": {
+    "sha256": "763e2bb212de736be9c15a4afc7861bd4ff1d037705e2f9f99a5a9c7b00a589c",
+    "size": 714
+  },
+  "api/native_extreme_missingness.json": {
+    "sha256": "af0d5b81c110bc80e12d28123bd1459253dc3bed3cd384bdc1c47751f6c68b9a",
+    "size": 10349
+  },
+  "api/native_radiation_flux.json": {
+    "sha256": "fdcb9c94b675161b55ab26d8e82eab0cddaf83fabbf677598efa26436cc3d284",
+    "size": 1515
+  },
+  "api/sites_15min.csv": {
+    "sha256": "9ccaa5bf04a483996bed5c87fb77beb126b1f38c4c004dc6ae1cafcab66ddbd2",
+    "size": 27671
+  },
+  "api/case-timings.json": {
+    "sha256": "99ce7810253378d9333ef13c4e23e6bd966f54c341bbe0af624eee21ed59c055",
+    "size": 5925
+  },
+  "api/sites_15min.arrow": {
+    "sha256": "94050f83e0933ecec11397cd5a6c12d36178667019ab6c83f755ad8912e95e44",
+    "size": 20138
+  }
+}

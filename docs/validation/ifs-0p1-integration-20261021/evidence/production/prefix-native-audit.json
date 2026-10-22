@@ -1,0 +1,862 @@
+{
+  "status": "ok",
+  "source": "ifs-hres-0p1",
+  "date": "20261020",
+  "cycle": 12,
+  "checked_at_utc": "2026-10-21T08:24:06.386906+00:00",
+  "elapsed_s": 4.886,
+  "development_prefix": true,
+  "files": 3,
+  "raw_sha256": {
+    "f000.subset.grib2": "88e40feac5eb995b72c7b1fee424ab265cb21d7c00c40ef97c0635d3ef49786d",
+    "f003.subset.grib2": "283e74ad6151d79b705a4a5a2b6a053137ffeefab7a3cc774788795a9234243c",
+    "f006.subset.grib2": "e4328ac555cd644f9b6ff8946638bf1a8778bbaea78c17f00c686e126ff2e2ba"
+  },
+  "grid": [
+    401,
+    701
+  ],
+  "spacing_degrees": 0.1,
+  "steps": [
+    0,
+    3,
+    6
+  ],
+  "variables": 30,
+  "compared_native_planes": 88,
+  "all_values_match_native": true,
+  "missingness_preserved": true,
+  "fields": [
+    {
+      "field": "cp_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "b13e179706e469f856e8f94fb2f628ca257806bdcd7df53a9bb464e37467fbd9"
+    },
+    {
+      "field": "d2m",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "509af30703c85fef96a49eab59c5baa003b756cf84d85ea97f50943c32ca9f1e"
+    },
+    {
+      "field": "fg10_max",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "b902f95688469d5e1da6bd1817810bc4351c420dc15387582e04ed8bd315e866"
+    },
+    {
+      "field": "gh",
+      "level": 850,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "9b795c088530ec3461bee8ffeae217f9ff4ca57ebaf7dc1e0cdbe99fa733a11e"
+    },
+    {
+      "field": "mn2t3_min",
+      "level": null,
+      "native_samples": 2,
+      "native_leads": [
+        3,
+        6
+      ],
+      "upstream_missing_leads": [
+        0
+      ],
+      "raw_windows": [
+        [
+          0,
+          3
+        ],
+        [
+          3,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "5f28d3401aa5e23e16f7bf84f44e20cdc0cddfe29ce17b4d415f3c8fb4fa34a8"
+    },
+    {
+      "field": "msl",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "4f3d20152676a72d6cf44d2e99971dd190983f1cae649664775b22c69dbeeea3"
+    },
+    {
+      "field": "mucape",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "7b57177d14a9177f17190deac83d3a715b2d4a967c716d874f09c2c9e27517de"
+    },
+    {
+      "field": "mx2t3_max",
+      "level": null,
+      "native_samples": 2,
+      "native_leads": [
+        3,
+        6
+      ],
+      "upstream_missing_leads": [
+        0
+      ],
+      "raw_windows": [
+        [
+          0,
+          3
+        ],
+        [
+          3,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "b24d8aff324cbdc91b6e3f019ce19da5f31fdec5962245d9760ccc9161c44d5e"
+    },
+    {
+      "field": "q",
+      "level": 850,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "71fff61260b7d4ee4c5efefce548d9ba70fced465c43e69b32b95bfeaf094ed9"
+    },
+    {
+      "field": "r",
+      "level": 850,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "032679413df53a0999e9181febfa167854d8a8a3813463fb54f876493c59cc77"
+    },
+    {
+      "field": "ro_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "259ca21ff72c179c95cac1d417812acd0dc68b3a3162fda9bbdf162db9256b0b"
+    },
+    {
+      "field": "sf_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "d595045e4bc6f41febf25bd5f6d9c57e326431c9f520648c175d08b3c150dbe9"
+    },
+    {
+      "field": "skt",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "b4254ec270bb012235fe2274e0889d61d6d335328b7a12e5af3a9ef6bd3e6f51"
+    },
+    {
+      "field": "sp",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "7409390ee2da4096d58bfa03f3d1d3968b94ed1faa6494b1dd0d99d96f7d07db"
+    },
+    {
+      "field": "ssr_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "e0b58548715d7b88593789285157a94637084cb50ea9168cfe38f32397c9d081"
+    },
+    {
+      "field": "ssrd_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "1d93c0cef78a4b933c35760e1127e58397bd913e9a579df8c6b23d7834a8e54c"
+    },
+    {
+      "field": "str_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "bf107200f3705e2cf5ba1975cb042ed1e0047d19747219e5f5ade8d31f26b615"
+    },
+    {
+      "field": "strd_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "d956e2af576746c8b38e87309d522afe62ab0d50f4e42a63fab207142a3def2a"
+    },
+    {
+      "field": "t",
+      "level": 850,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "cdba6ea7da254b325662806f221662b36f07a68e86fee42fbe3d7480e84d6963"
+    },
+    {
+      "field": "t2m",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "8852f4479bf02d4968416c09dcb2f82bdff6666dafb8a4b37cf25a77da041238"
+    },
+    {
+      "field": "tcc",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "79cd3f6e16acfb6f0501d5df7c4fd7cbc4589ba09ce708862602c6e49ee02b8c"
+    },
+    {
+      "field": "tcwv",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "cc2964b801d52bce463906ed6acca71c5e105813dffd2efd08643633dc7d5990"
+    },
+    {
+      "field": "tp_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "445d3bb4f07fc28acdabf5a2486d063c4908306f4680c4165fe543af9730a7fb"
+    },
+    {
+      "field": "ttr_accum",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "aa09251ba7206a28fe53aef953395e2f4d98a70fd7d5b992be276eb078220712"
+    },
+    {
+      "field": "u",
+      "level": 850,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "a04158ae06c0722e89325b936b45813a11b2263858f673b31127b79760fa4c88"
+    },
+    {
+      "field": "u10",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "7c586e13ddf99eed4bdbbd15509f62034908b6defb17e5b0c0df5e87cc19d43a"
+    },
+    {
+      "field": "u100",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "35ee1cab2649e985c026e3922e4ea105f9db90cb2e321d8f48fab03edf3daa83"
+    },
+    {
+      "field": "v",
+      "level": 850,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "18f581e1418e0dbc48f7301b6ec952508f65c85a1103e696af54611bd490f747"
+    },
+    {
+      "field": "v10",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "ddad818ce4d5a8623570c490a0a04977994d7e077131fc334ab01d957f0463f3"
+    },
+    {
+      "field": "v100",
+      "level": null,
+      "native_samples": 3,
+      "native_leads": [
+        0,
+        3,
+        6
+      ],
+      "upstream_missing_leads": [],
+      "raw_windows": [
+        [
+          0,
+          0
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "all_values_match_native": true,
+      "zarr_values_sha256": "c45c7fcdc07e75a2b7ea5512170a02d345d33590c4679fb7d1618461d2ce246b"
+    }
+  ],
+  "noncanonical_preview_messages": [
+    {
+      "path": "/climate_data/ifs-hres-0p1/20261020/12z/f000.subset.grib2",
+      "offset": 17918325,
+      "file_lead": 0,
+      "field": "mx2t3_max",
+      "level": null,
+      "paramId": 228026,
+      "start": 0,
+      "end": 3,
+      "stepType": "max",
+      "units": "K"
+    },
+    {
+      "path": "/climate_data/ifs-hres-0p1/20261020/12z/f000.subset.grib2",
+      "offset": 17918773,
+      "file_lead": 0,
+      "field": "mn2t3_min",
+      "level": null,
+      "paramId": 228027,
+      "start": 0,
+      "end": 3,
+      "stepType": "min",
+      "units": "K"
+    }
+  ],
+  "peak_rss_MiB": 270.14
+}

@@ -1,0 +1,24 @@
+{
+  "phase": "restore",
+  "receipt": [
+    {
+      "path": "/workspace/climate_restorage/src/climate_restore/sources/ifs_0p1.py",
+      "before_sha256": "c50439c5bfead1e06ddce7ba1b458e78b0f14eedf607e934dcfac99a5e120e36",
+      "after_sha256": "c66fac678bc15bca9d33a6dcc999905f7f1c116dd5b616acc809317c37cc0fdb",
+      "changed": true
+    },
+    {
+      "path": "/workspace/climate_restorage/config/jobs/ifs_0p1_zarr_china_ser.yaml",
+      "before_sha256": "11d6d0adc111889a4e83aa7177de9f4c284f4409c855e03cd0c07fb53c7c2450",
+      "after_sha256": "11d6d0adc111889a4e83aa7177de9f4c284f4409c855e03cd0c07fb53c7c2450",
+      "changed": false
+    },
+    {
+      "path": "/workspace/climate_restorage/src/climate_restore/sources/__init__.py",
+      "before_sha256": "1d390dc7bbfbb7d0691fb2aad18d12b6c3b6ea25253c4063dfd3be7bb72d6278",
+      "after_sha256": "1d390dc7bbfbb7d0691fb2aad18d12b6c3b6ea25253c4063dfd3be7bb72d6278",
+      "changed": false
+    }
+  ],
+  "receipt_path": "/logs/ifs-0p1-release-20261021/restore-deployment.json"
+}

@@ -1,5 +1,8 @@
 # deploy/ — scheduling the download step (NWP → GRIB subsets + manifest)
 
+IFS 0.1° 独立 Google 源、00/12z 调度及资源保护见
+[IFS_0P1.md](IFS_0P1.md)。原 `ifs-hres` 0.25° 调度保持原配置。
+
 `download_run.sh` is a **host-side cron entry** that drives one
 `climate_download run` *inside the long-running dev container* (`zhangmy-dev`).
 It mirrors the restore side (`climate_restorage/deploy/restore_scan.sh`) — same

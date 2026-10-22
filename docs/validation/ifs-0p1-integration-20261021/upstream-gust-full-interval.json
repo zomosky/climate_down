@@ -1,0 +1,380 @@
+[
+  {
+    "step": 93,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-93h-oper-fc-sfc.index",
+    "index_sha256": "52e0fdf8b133020d10ff3a1969eb9057678964b385ce765b8a33ce81ed220746",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "93",
+        "param": "10fg3",
+        "_offset": 17779433,
+        "_length": 3094792
+      }
+    ]
+  },
+  {
+    "step": 96,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-96h-oper-fc-sfc.index",
+    "index_sha256": "1e1bdbb2b1f2378cd65a7eb28ae33293803d4eacaf733508f5211bc9ad098425",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "96",
+        "param": "10fg3",
+        "_offset": 17794384,
+        "_length": 3097174
+      }
+    ]
+  },
+  {
+    "step": 99,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-99h-oper-fc-sfc.index",
+    "index_sha256": "71bd1a113d1389ec7008687762c5266b17a31ac5d9ad09942cdba41fe4566a8e",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "99",
+        "param": "10fg3",
+        "_offset": 18514773,
+        "_length": 3107495
+      }
+    ]
+  },
+  {
+    "step": 102,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-102h-oper-fc-sfc.index",
+    "index_sha256": "c6dc387cd55ad06e355aff5244b2181d7a581da684b97f37b49c15f6e3c26399",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "102",
+        "param": "10fg3",
+        "_offset": 15423093,
+        "_length": 3114574
+      }
+    ]
+  },
+  {
+    "step": 105,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-105h-oper-fc-sfc.index",
+    "index_sha256": "3a7adc753eac320710887dbd8dc3ec10fd5772116eccb3ada6739ad9c95fc8c6",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "105",
+        "param": "10fg3",
+        "_offset": 12934244,
+        "_length": 3112623
+      }
+    ]
+  },
+  {
+    "step": 108,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-108h-oper-fc-sfc.index",
+    "index_sha256": "ee24fed7feaefdd7824a569ba9ea78685df525ae65e30d8476bde9d4aace77c8",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "108",
+        "param": "10fg3",
+        "_offset": 15311625,
+        "_length": 3101325
+      }
+    ]
+  },
+  {
+    "step": 111,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-111h-oper-fc-sfc.index",
+    "index_sha256": "484b3e919f0c2cb7fbafe1d02e4ae4fd3bbc212eecec80d9631a19d7294eb651",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "111",
+        "param": "10fg3",
+        "_offset": 13626718,
+        "_length": 3096181
+      }
+    ]
+  },
+  {
+    "step": 114,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-114h-oper-fc-sfc.index",
+    "index_sha256": "4704b6d1ddae26d79b093e2a91321761cadccd4bcbae926903358bf7639b4da4",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "114",
+        "param": "10fg3",
+        "_offset": 18373588,
+        "_length": 3085356
+      }
+    ]
+  },
+  {
+    "step": 117,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-117h-oper-fc-sfc.index",
+    "index_sha256": "f77e42e18d969dfb6d6c4bc958d75269ba52455088833dbf27d273bf8b12a8e9",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "117",
+        "param": "10fg3",
+        "_offset": 13627772,
+        "_length": 3082890
+      }
+    ]
+  },
+  {
+    "step": 120,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-120h-oper-fc-sfc.index",
+    "index_sha256": "f47eaa6802edf7535dabfdbb3aa4b1e3cd189ad48b8c1fe3ceed5f637a619961",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "120",
+        "param": "10fg3",
+        "_offset": 13636192,
+        "_length": 3083122
+      }
+    ]
+  },
+  {
+    "step": 123,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-123h-oper-fc-sfc.index",
+    "index_sha256": "4822bf567f9e0f501d370a01915db3e459b910858fd60ef2b84b3e4c029fc6d7",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "123",
+        "param": "10fg3",
+        "_offset": 13634913,
+        "_length": 3093749
+      }
+    ]
+  },
+  {
+    "step": 126,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-126h-oper-fc-sfc.index",
+    "index_sha256": "e2c2d5dba86a758041c9397f4bf33cbe324239f2151becb2f08f3ff53b183b00",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "126",
+        "param": "10fg3",
+        "_offset": 17001796,
+        "_length": 3095958
+      }
+    ]
+  },
+  {
+    "step": 129,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-129h-oper-fc-sfc.index",
+    "index_sha256": "b28c51cd7471e685c8a90b741f45485ac4964ca65d4954594a927d6316e7843c",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "129",
+        "param": "10fg3",
+        "_offset": 15301637,
+        "_length": 3100075
+      }
+    ]
+  },
+  {
+    "step": 132,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-132h-oper-fc-sfc.index",
+    "index_sha256": "d07bfe7efb79882a6ffb6f126aeee2dae6f0c97ea489ee46f64dc75918bdd4b0",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "132",
+        "param": "10fg3",
+        "_offset": 15212686,
+        "_length": 3088351
+      }
+    ]
+  },
+  {
+    "step": 135,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-135h-oper-fc-sfc.index",
+    "index_sha256": "a576c788eb45a6db93fa79311813775a975682f47c71d470a49c57c6b8689ad9",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "135",
+        "param": "10fg3",
+        "_offset": 18193453,
+        "_length": 3081644
+      }
+    ]
+  },
+  {
+    "step": 138,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-138h-oper-fc-sfc.index",
+    "index_sha256": "ec0cf23a3917ab67c67b0852aa30e3a3ae182c079c1816e838a6399d91c8f18c",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "138",
+        "param": "10fg3",
+        "_offset": 15172492,
+        "_length": 2376808
+      }
+    ]
+  },
+  {
+    "step": 141,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-141h-oper-fc-sfc.index",
+    "index_sha256": "48c00c1564ece1bd765e28a6201bd50315c1fcf8f5b2df44db565545c5117413",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "141",
+        "param": "10fg3",
+        "_offset": 15191002,
+        "_length": 2377090
+      }
+    ]
+  },
+  {
+    "step": 144,
+    "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-144h-oper-fc-sfc.index",
+    "index_sha256": "b84b74d1686d5b0f4562a00ddb5f84fef795798d9635d7e95ffbcc3d55ed01a8",
+    "gust_records": [
+      {
+        "domain": "g",
+        "date": "20261020",
+        "time": "1200",
+        "expver": "0001",
+        "class": "od",
+        "type": "fc",
+        "stream": "oper",
+        "levtype": "sfc",
+        "step": "144",
+        "param": "10fg3",
+        "_offset": 13534765,
+        "_length": 2376570
+      }
+    ]
+  }
+]

@@ -23,6 +23,7 @@ class SourcePolicy(NamedTuple):
     lookback_days: int
     expected_steps: tuple[int, ...]
     log_name: str
+    first_init: str | None = None  # YYYYMMDDHH; never request pre-launch products
 
 
 DWD_STEPS = tuple(range(0, 79)) + tuple(range(81, 181, 3))
@@ -37,6 +38,8 @@ POLICIES = (
     SourcePolicy("aifs-single", "config/jobs/aifs_renewables_ser.yaml", 12, 6, 2, AIFS_STEPS, "download_aifs.log"),
     SourcePolicy("ifs-hres", "config/jobs/ifs_renewables_ser.yaml", 12, 8, 2, IFS_STEPS, "download_ifs.log"),
     SourcePolicy("ifs-hres", "config/jobs/ifs_renewables_ser.yaml", 0, 8, 2, IFS_STEPS, "download_ifs_00z.log"),
+    SourcePolicy("ifs-hres-0p1", "config/jobs/ifs_0p1_renewables_ser.yaml", 12, 12, 1, IFS_STEPS, "download_ifs_0p1_12z.log", "2026102012"),
+    SourcePolicy("ifs-hres-0p1", "config/jobs/ifs_0p1_renewables_ser.yaml", 0, 12, 1, IFS_STEPS, "download_ifs_0p1_00z.log", "2026102012"),
 )
 
 
@@ -53,10 +56,12 @@ def candidate_dates(now: datetime, policy: SourcePolicy) -> tuple[str, ...]:
     """Return recent init dates from oldest to newest for one policy."""
 
     latest = datetime.strptime(latest_init_date(now, policy), "%Y%m%d")
-    return tuple(
+    dates = tuple(
         (latest - timedelta(days=days_ago)).strftime("%Y%m%d")
         for days_ago in range(policy.lookback_days, -1, -1)
     )
+    return tuple(date for date in dates
+                 if policy.first_init is None or f"{date}{policy.cycle:02d}" >= policy.first_init)
 
 
 def _raw_path(path_value: str, data_root: Path, manifest: Path) -> Path:

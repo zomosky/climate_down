@@ -1,0 +1,1 @@
+{"before_sha256": "0372e2044cee44f6c032045f90141b734f1eb27612e5e5d930e6699fd00fbe36", "after_sha256": "0e41de708796aa0d3a8a33b279f94aad97c3f125ab48a5af469374fc1e8da7c3", "reason": "verify raw-native missingness of min/max temperatures remains null across the full85-lead HTTP response"}

@@ -1,0 +1,19 @@
+{
+  "root_cause": "cfgrib decimal-coordinate floating-point roundoff excludes native bbox boundary cells",
+  "before_shape": [
+    400,
+    700
+  ],
+  "expected_shape": [
+    401,
+    701
+  ],
+  "observed_west_coordinate": 69.99999999999434,
+  "observed_north_coordinate": 55.00000000000135,
+  "raw_grib_first_longitude_degrees": 180.0,
+  "raw_grib_last_longitude_degrees": 179.9,
+  "fix_scope": "ifs-hres-0p1 adapter only",
+  "fix": "round coordinate arrays to GRIB microdegree precision before native bbox slicing; values unchanged",
+  "old_025_adapter_modified": false,
+  "failing_reproduction": "test_crop_keeps_native_boundary_cells_despite_cfgrib_coordinate_roundoff"
+}

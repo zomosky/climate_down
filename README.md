@@ -4,6 +4,14 @@ ENS 事件概率新增 `ifs-ens-probabilities`（5 个降水/阵风字段）与
 `aifs-ens-probabilities`（14 个事件概率参数）。多时间包、原始窗口及每天
 北京时间 05:15/17:15 的调度见 [ENS 接入说明](deploy/ENS_PROBABILITIES.md)。
 
+IFS 0.1° 新增独立源 `ifs-hres-0p1`（`source: ifs_0p1`），保留原有
+`ifs-hres` 0.25° 源及作业配置。新源按物理文件分别读取 `sfc/pl` 索引，
+下载所选字段后原子合并为一个时效文件。`ifs_0p1_renewables.yaml` 为单时效
+本地测速作业；`ifs_0p1_renewables_ser.yaml` 使用 Google、全 85 个原生时效、
+8 路下载并输出到 `/climate_data`。生产接入见
+[0.1° 接入说明](deploy/IFS_0P1.md)，初始镜像测速见
+[测速记录](docs/validation/ifs-0p1-speed-20261021/README.md)。
+
 `climate_pipeline` 下的气象数据下载子项目，负责把外部数值预报产品（首批 ECMWF AIFS）从公开镜像拉到本地，**在下载阶段**就完成变量与字节级裁剪，并向下游 `cliamte_data` 加工管道交付干净、体量合适的 GRIB 文件 + manifest 触发凭据。
 
 完整的项目目标、范围、路线图见 [`PROJECT.md`](./PROJECT.md)。本文聚焦 **配置（YAML）** 与 **函数（Python API）** 的使用方式。

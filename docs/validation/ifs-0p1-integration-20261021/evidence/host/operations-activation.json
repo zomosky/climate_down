@@ -1,0 +1,24 @@
+{
+  "status": "active",
+  "at_utc": "2026-10-21T09:55:26.634218+00:00",
+  "files": [
+    {
+      "name": "reconcile_sources.py",
+      "before_sha256": "d4b61dc9cf62b1585955e48f9e721435e0712a4c50d12164c9fefa0b0e3e512f",
+      "after_sha256": "d7b1cd587570c7a98efd68e54a0c65d74a2120b36b295b4fc0b795e129888d99",
+      "changed": true
+    },
+    {
+      "name": "restore_ifs_0p1.py",
+      "before_sha256": null,
+      "after_sha256": "157c2456cab702bcb768d73af155bb1e6eb8a8554b8ed5eff6230a6aa9fa35b7",
+      "changed": true
+    }
+  ],
+  "cron_before_sha256": "ca9e557cd1c01701c9ef6ed2679b2e0d3da2dff33379d22498434779e517070e",
+  "cron_after_sha256": "7d95d7b25713a61de634d00a3cd2c45ba041a53538901874f2c93c470f5c8208",
+  "new_cron_block": "# BEGIN IFS-0P1 Google\n5 6 * * * CYCLE=12 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_12z.log 2>&1\n35 7 * * * CYCLE=12 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_12z.log 2>&1\n5 18 * * * CYCLE=0 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_00z.log 2>&1\n35 19 * * * CYCLE=0 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_00z.log 2>&1\n*/10 * * * * /usr/bin/python3 /home/zhangmingyu/operation/restore_ifs_0p1.py >> /home/zhangmingyu/operation/logs/restore_ifs_0p1.log 2>&1\n# END IFS-0P1 Google\n",
+  "all_unrelated_cron_lines_preserved": true,
+  "existing_runner_hashes_unchanged": true,
+  "acceptance_ready": true
+}

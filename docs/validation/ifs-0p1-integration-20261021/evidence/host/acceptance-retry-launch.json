@@ -1,0 +1,6 @@
+{
+  "pid": 3304636,
+  "api_sha256": "49d6426e78213a3d9e8de94c100b6e9947899c2ef18901526ebd053b7e1585fc",
+  "runner_sha256": "d724e45180df0b55d36c25e12bfc02d28f785c3ea76d65b0bd29816af2c88fe7",
+  "reason": "preserve first catalog-cache404; wait for catalog visibility; distinct point id avoids previous request cache"
+}

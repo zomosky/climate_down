@@ -1,0 +1,17 @@
+{
+  "shortName": "10fg3",
+  "name": "Maximum 10 metre wind gust in the last 3 hours",
+  "paramId": 228028,
+  "stepType": "max",
+  "startStep": 90,
+  "endStep": 93,
+  "units": "m s**-1",
+  "typeOfLevel": "heightAboveGround",
+  "level": 10,
+  "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-93h-oper-fc-sfc.grib2",
+  "byte_range": [
+    17779433,
+    20874224
+  ],
+  "sha256": "9fb487ed832e9f72ab5fec1f706589e5703346fcaee936f60e3483551e01d700"
+}

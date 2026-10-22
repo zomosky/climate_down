@@ -1,0 +1,21 @@
+{
+  "window": {
+    "start": "20261014",
+    "end": "20261020",
+    "cycles": [
+      0,
+      12
+    ],
+    "timezone": "UTC"
+  },
+  "requested_inits": 14,
+  "available_inits": 1,
+  "complete_inits": 1,
+  "unavailable_upstream_inits": 13,
+  "available_history_complete": true,
+  "full_seven_day_archive_complete": false,
+  "cron_active_and_observed": true,
+  "previous_cron_preserved": true,
+  "manual_redownloads_started": 0,
+  "reason": "All available historical inits were already healthy; unavailable prefixes were retained as upstream absence."
+}

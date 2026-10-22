@@ -1,0 +1,116 @@
+{
+  "checked_at": "2026-10-22T01:26:31.887374+00:00",
+  "scheduler": {
+    "installed": true,
+    "cron_sha256": "14c0769818747d828ec39e749b999d86662cfebfd843dfdc1f9bd3f17c422f7a",
+    "existing_scripts_unchanged": true
+  },
+  "actual_guard_calls": [
+    {
+      "event": "ifs0p1_skip_healthy",
+      "date": "20261021",
+      "cycle": 12,
+      "reason": "complete",
+      "dry_run": false
+    },
+    {
+      "event": "ifs0p1_skip_healthy",
+      "date": "20261021",
+      "cycle": 0,
+      "reason": "complete",
+      "dry_run": false
+    }
+  ],
+  "early_window_dry_run": {
+    "event": "ifs0p1_check_download",
+    "date": "20261022",
+    "cycle": 0,
+    "reason": "manifest missing",
+    "dry_run": true
+  },
+  "products_unchanged": [
+    {
+      "date": "20261020",
+      "cycle": 12,
+      "steps": 85,
+      "raw_manifest_unchanged": true,
+      "zarr_metadata_unchanged": true
+    },
+    {
+      "date": "20261021",
+      "cycle": 0,
+      "steps": 85,
+      "raw_manifest_unchanged": true,
+      "zarr_metadata_unchanged": true
+    },
+    {
+      "date": "20261021",
+      "cycle": 12,
+      "steps": 85,
+      "raw_manifest_unchanged": true,
+      "zarr_metadata_unchanged": true
+    }
+  ],
+  "containers": {
+    "zhangmy-dev": {
+      "running": true,
+      "image": "sha256:05a73f04bc364a4edd562fa6c1ddf06a4f7a2649ecf4a5974966bb020fe476ad",
+      "memory_bytes": 38654705664,
+      "nano_cpus": 17999998976
+    },
+    "climate-watcher": {
+      "running": true,
+      "image": "sha256:5ce85582d71a44d5f7822b15c89471915fb4f9bbb7e18f1da86677c9f26b8c6c",
+      "memory_bytes": 25769803776,
+      "nano_cpus": 12000000000
+    }
+  },
+  "original_025_query": {
+    "rows": 96,
+    "sha256": "409b5aff844303ed7023f689ce592e5e859d52c405cc6468f9ae1275431a0321"
+  },
+  "new_01_query": {
+    "rows": 8,
+    "sha256": "bef12a6f32ecec8b4507d506c7f766098e6ba435bdabce181ca991582f8d25fb"
+  },
+  "health": {
+    "status": "ok",
+    "version": "0.1.0",
+    "warm": {
+      "rounds": 1297,
+      "running": false,
+      "last_ok": 1792632384.304961,
+      "last_seconds": 2.695,
+      "last_error": null,
+      "warmed": [
+        "status days=0 cycles=全部 0.84s",
+        "status days=14 cycles=全部 0.19s",
+        "status days=0 cycles=(0, 12) 1.24s",
+        "status days=14 cycles=(0, 12) 0.19s",
+        "sources 0.23s",
+        "obs_overview 0.00s",
+        "satellite_status days=0 0.00s",
+        "satellite_status days=14 0.00s",
+        "reanalysis_status 0.00s",
+        "obs_nc_status 0.00s"
+      ]
+    },
+    "checks": {
+      "file_descriptors": {
+        "status": "ok",
+        "used": 17,
+        "soft_limit": 1024,
+        "hard_limit": 524288,
+        "remaining": 1007,
+        "used_ratio": 0.0166,
+        "max_used_ratio": 0.9,
+        "min_free": 32
+      },
+      "homepage": {
+        "status": "ok",
+        "entry_assets_checked": 2
+      }
+    }
+  },
+  "status": "ok"
+}

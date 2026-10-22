@@ -1,0 +1,32 @@
+{
+  "production_before": {
+    "seconds": 0.493,
+    "sha256": "409b5aff844303ed7023f689ce592e5e859d52c405cc6468f9ae1275431a0321",
+    "rows": 96,
+    "columns": [
+      "ifs-hres:t2m:cd",
+      "ifs-hres:u100:cd",
+      "ifs-hres:ssrd_accum:cd",
+      "ifs-hres:init_time",
+      "ifs-hres:lead_hours"
+    ],
+    "warnings": [
+      "solar_quality: 2 interval energy adjustments; details in zrread_solar_corrections attributes (original/corrected W/m\u00b2 and signed Wh/m\u00b2)"
+    ]
+  },
+  "canary": {
+    "seconds": 1.547,
+    "sha256": "409b5aff844303ed7023f689ce592e5e859d52c405cc6468f9ae1275431a0321",
+    "rows": 96,
+    "columns": [
+      "ifs-hres:t2m:cd",
+      "ifs-hres:u100:cd",
+      "ifs-hres:ssrd_accum:cd",
+      "ifs-hres:init_time",
+      "ifs-hres:lead_hours"
+    ],
+    "warnings": [
+      "solar_quality: 2 interval energy adjustments; details in zrread_solar_corrections attributes (original/corrected W/m\u00b2 and signed Wh/m\u00b2)"
+    ]
+  }
+}

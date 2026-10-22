@@ -1,0 +1,14 @@
+{
+  "started_at_utc": "2026-10-21T09:18:02.680509+00:00",
+  "finished_at_utc": "2026-10-21T09:46:52.945206+00:00",
+  "sampling_interval_s": 5,
+  "samples": 347,
+  "producer_limit_bytes": 38654705664,
+  "peak_working_bytes_by_stage": {
+    "download": 5135036416,
+    "waiting_memory": 3155255296,
+    "restore": 9143214080
+  },
+  "oom_kill_delta": 0,
+  "scope": "producer cgroup; last part of download and entire restore; includes concurrent producer workloads"
+}

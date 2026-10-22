@@ -1,0 +1,102 @@
+- button "跳到主要内容"
+- banner:
+  - link "Climate Watcher 平台概览":
+    - /url: "#/overview"
+    - generic: Climate Watcher
+  - navigation "主导航":
+    - link "平台概览":
+      - /url: "#/overview"
+    - link "运行监控":
+      - /url: "#/"
+    - link "预测数据":
+      - /url: "#/explore"
+    - link "卫星数据":
+      - /url: "#/obs"
+    - link "再分析数据":
+      - /url: "#/reanalysis"
+    - link "源与变量":
+      - /url: "#/sources"
+    - link "静态数据":
+      - /url: "#/static"
+  - link "API 文档 ↗":
+    - /url: /docs
+- main:
+  - heading "数据源详情" [level=1]
+  - paragraph: 查看单个数据源的起报、变量与入库详情。
+  - button "返回 返回":
+    - generic "返回":
+    - generic: 返回
+  - separator
+  - generic: ifs-hres-0p1
+  - table:
+    - rowgroup:
+      - row "profile 描述 ECMWF IFS 0.1° 确定性预报（中国区 15–55N/70–140E）；00/12 UTC 起报，0–144h 每 3h、150–360h 每 6h；Google 开放数据，较 0.25° 额外延迟约 2h，业务可用延迟暂按 12h 默认 cycle 12z 落盘延迟 ~12 小时":
+        - cell "profile 描述"
+        - cell "ECMWF IFS 0.1° 确定性预报（中国区 15–55N/70–140E）；00/12 UTC 起报，0–144h 每 3h、150–360h 每 6h；Google 开放数据，较 0.25° 额外延迟约 2h，业务可用延迟暂按 12h"
+        - cell "默认 cycle"
+        - cell "12z"
+        - cell "落盘延迟"
+        - cell "~12 小时"
+      - row "太阳辐射变量 ssrd_accum, ssr_accum":
+        - cell "太阳辐射变量"
+        - cell "ssrd_accum, ssr_accum"
+  - tablist:
+    - tab "变量"
+    - tab "Init 列表" [active] [selected]
+  - tabpanel "Init 列表":
+    - radiogroup "radio-group":
+      - radio "30 天"
+      - generic: 30 天
+      - radio "60 天" [checked]
+      - generic: 60 天
+      - radio "180 天"
+      - generic: 180 天
+      - radio "1 年"
+      - generic: 1 年
+      - radio "全部历史"
+      - generic: 全部历史
+    - table:
+      - rowgroup:
+        - row "init (UTC) 下载 重整 文件数 大小 失败 下载完成 (Asia/Shanghai) 重整完成 (Asia/Shanghai) 失败摘要":
+          - columnheader "init (UTC)":
+            - generic: init (UTC)
+          - columnheader "下载":
+            - generic: 下载
+          - columnheader "重整":
+            - generic: 重整
+          - columnheader "文件数":
+            - generic: 文件数
+          - columnheader "大小":
+            - generic: 大小
+          - columnheader "失败":
+            - generic: 失败
+          - columnheader "下载完成 (Asia/Shanghai)":
+            - generic: 下载完成 (Asia/Shanghai)
+          - columnheader "重整完成 (Asia/Shanghai)":
+            - generic: 重整完成 (Asia/Shanghai)
+          - columnheader "失败摘要":
+            - generic: 失败摘要
+    - table:
+      - rowgroup:
+        - row "2026-10-20 12z 完整 完成 85 4.8 GB 0 10/21 17:43 10/21 17:46":
+          - cell "2026-10-20 12z":
+            - generic: 2026-10-20 12z
+          - cell "完整":
+            - generic: 完整
+          - cell "完成":
+            - generic: 完成
+          - cell "85":
+            - generic: "85"
+          - cell "4.8 GB":
+            - generic: 4.8 GB
+          - cell "0":
+            - generic: "0"
+          - cell "10/21 17:43":
+            - generic: 10/21 17:43
+          - cell "10/21 17:46":
+            - generic: 10/21 17:46
+          - cell
+  - img "华茂能联"
+  - generic: Climate Watcher
+  - link "数据说明与使用约定":
+    - /url: "#/sources"

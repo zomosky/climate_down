@@ -1,0 +1,30 @@
+{
+  "phase": "download",
+  "receipt": [
+    {
+      "path": "/workspace/climate_down/src/climate_download/sources/ifs_split.py",
+      "before_sha256": null,
+      "after_sha256": "0378e419c200c0c858ad06b82081b5121da9dd30fb6ac8fc8bf7c1e75ee48688",
+      "changed": true
+    },
+    {
+      "path": "/workspace/climate_down/config/sources/ifs_0p1.yaml",
+      "before_sha256": null,
+      "after_sha256": "01c7d2b59b4837a0056c81fbff36d5608a2a8be143ae86c2f7a5eafe06843374",
+      "changed": true
+    },
+    {
+      "path": "/workspace/climate_down/config/jobs/ifs_0p1_renewables_ser.yaml",
+      "before_sha256": null,
+      "after_sha256": "f585c36b8f97adacebe572fb8bd10a6d539ee88ff77bf3466ce12909d2860dad",
+      "changed": true
+    },
+    {
+      "path": "/workspace/climate_down/src/climate_download/sources/__init__.py",
+      "before_sha256": "1b2065b39c4ed1dafe91fdf1c200a9d8ae8a9dbd68c455c074f8ee413637405e",
+      "after_sha256": "2b5d8fb1c29c7aa0663277c25e92f6b9a027821beec6bf6d6182b084190e7e40",
+      "changed": true
+    }
+  ],
+  "receipt_path": "/logs/ifs-0p1-release-20261021/download-deployment.json"
+}

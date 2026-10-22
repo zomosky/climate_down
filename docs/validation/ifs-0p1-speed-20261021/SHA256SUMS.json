@@ -1,0 +1,20 @@
+{
+  "README.md": "65135fa7f35153269e8817d07bd601701398e7254818a0092c1e6b405e18c41a",
+  "config/jobs/ifs_0p1_renewables.yaml": "2a4af080f9347095e634e713bf02de9959c7e23732446cd7377a2b1b5a7846e7",
+  "config/sources/ifs_0p1.yaml": "01c7d2b59b4837a0056c81fbff36d5608a2a8be143ae86c2f7a5eafe06843374",
+  "docs/validation/ifs-0p1-speed-20261021/241-results.json": "ce5613d387af39f85dbbacfd8425096e2a83c077c6c9979e950aa2c3ab3b83c6",
+  "docs/validation/ifs-0p1-speed-20261021/241-source-acceptance.json": "9e5aacb2f7e27a7be1dbcee72f3368194d5edd1c196c6cc92c5acb1396f7987c",
+  "docs/validation/ifs-0p1-speed-20261021/241-source-run.txt": "868035ed3a44bc3f60a8388c5fa67ac35a05eaf9cef9bb9a38724c5657a81247",
+  "docs/validation/ifs-0p1-speed-20261021/README.md": "d9d6e8d71742442a5882062c774a46e8cdb316f81361588c802728aa34ba29ac",
+  "docs/validation/ifs-0p1-speed-20261021/benchmark.py": "827258e4bf796de5aaa0c1bd535d18c722fd014ef13acb37bbfb06adeac22a30",
+  "docs/validation/ifs-0p1-speed-20261021/download-tests.xml": "6ef1678eb63f6c95588f95838300d0d50cfa3e0d42279202f3a1f977f421be80",
+  "docs/validation/ifs-0p1-speed-20261021/local-results.json": "734c4d2e7cda1fd809293d13d6cf54d90fd430f7f74acef4af032c60007a2ae2",
+  "docs/validation/ifs-0p1-speed-20261021/run_remote_source.py": "7a4fba23b24ae512fba3a98b84c25715e0cc166debfe984f544e2f5af8ad2eeb",
+  "docs/validation/ifs-0p1-speed-20261021/run_source.py": "2e7829d3f8baeac11b01792a09dffe2f0b7a64ad5b0f35736fdfd26e3366c84e",
+  "docs/validation/ifs-0p1-speed-20261021/sample-decode.json": "6b65d195251d3aa1141da4882ad4793cfa51c7b09a0394454b63fbf94488998c",
+  "docs/validation/ifs-0p1-speed-20261021/source-acceptance.json": "fff34da9cd31abbde20a55ff120979c72f2b1c80c2832d96f2452fb67ca69a26",
+  "docs/validation/ifs-0p1-speed-20261021/unchanged-025.json": "b9ce2c6aa0bc366cf1fc1b5a0d970e0cdfa1421d4a12617ceb177230a4aa8e43",
+  "src/climate_download/sources/__init__.py": "2faa4ea7cdd7c9f39c4989442d4cca9e190fe1b331568559062a9bfb447335fd",
+  "src/climate_download/sources/ifs_split.py": "0378e419c200c0c858ad06b82081b5121da9dd30fb6ac8fc8bf7c1e75ee48688",
+  "tests/test_ifs_split.py": "659e3fccc75f09ca2b218ef53f9e386b5faa7fbd6b602957047650e1650f0e82"
+}

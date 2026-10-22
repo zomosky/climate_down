@@ -1,0 +1,12 @@
+{
+  "pid": 3313638,
+  "api_sha256": "4bd79235b3a9f6e28c5b4dfb2130fdc4e21423103258ffeac6600942e6ab0e5e",
+  "runner_sha256": "d96b453e3ec4b7a4043ce5f968808db4dd99a397fddb3c3e8e177939adccfe74",
+  "reuse_successful_cases": [
+    "native_sites",
+    "native_radiation_flux",
+    "native_extreme_missingness",
+    "sites_15min"
+  ],
+  "reason": "Pandas DatetimeIndex internal unit is not always ns; compare physical Timedelta; reuse successful HTTP results and timings"
+}

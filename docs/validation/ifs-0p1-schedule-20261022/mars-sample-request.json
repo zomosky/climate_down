@@ -1,0 +1,14 @@
+{
+  "class": "od",
+  "stream": "oper",
+  "type": "fc",
+  "expver": "1",
+  "date": "20261014",
+  "time": "12",
+  "step": "0",
+  "levtype": "sfc",
+  "param": "167.128",
+  "grid": "0.1/0.1",
+  "area": "55/70/15/140",
+  "format": "grib"
+}

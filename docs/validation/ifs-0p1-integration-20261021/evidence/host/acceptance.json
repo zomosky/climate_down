@@ -1,0 +1,25 @@
+{
+  "status": "ok",
+  "date": "20261020",
+  "cycle": 12,
+  "started_at_utc": "2026-10-21T09:53:26.668317+00:00",
+  "stages": {
+    "api_audit": {
+      "status": "ok",
+      "started_at_utc": "2026-10-21T09:53:26.668456+00:00",
+      "finished_at_utc": "2026-10-21T09:53:32.424514+00:00",
+      "seconds": 5.756,
+      "returncode": 0
+    },
+    "native_audit": {
+      "status": "ok",
+      "started_at_utc": "2026-10-21T09:53:32.425029+00:00",
+      "finished_at_utc": "2026-10-21T09:54:50.845386+00:00",
+      "seconds": 78.42,
+      "returncode": 0
+    }
+  },
+  "attempt": 3,
+  "product_observed_at_utc": "2026-10-21T09:53:26.668452+00:00",
+  "finished_at_utc": "2026-10-21T09:54:50.845806+00:00"
+}

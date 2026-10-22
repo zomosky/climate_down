@@ -35,6 +35,8 @@ def test_policies_cover_every_operational_nwp_source_and_prioritize_dwd():
         ("aifs-single", 12),
         ("ifs-hres", 12),
         ("ifs-hres", 0),
+        ("ifs-hres-0p1", 12),
+        ("ifs-hres-0p1", 0),
     ]
 
 

@@ -1,0 +1,63 @@
+{
+  "tested_at_utc": "2026-10-21T07:47:27.881310+00:00",
+  "location": "local macOS / current proxy environment",
+  "direct": false,
+  "date": "20261020",
+  "cycle": 12,
+  "step": 3,
+  "indices": [
+    {
+      "host": "google",
+      "shard": "sfc",
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-3h-oper-fc-sfc.index",
+      "status": 200,
+      "bytes": 10593,
+      "records": 51,
+      "sha256": "9ce1d3c3f6d8b9c06db56c25d9703853a755029d730ecc0f9e58008de43c08df",
+      "elapsed_s": 0.541
+    },
+    {
+      "host": "google",
+      "shard": "pl",
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-3h-oper-fc-pl.index",
+      "status": 200,
+      "bytes": 31044,
+      "records": 140,
+      "sha256": "5967b66a8b2bd752f37d904d6bf457d044eb036b8976522eaf9ff77885abb548",
+      "elapsed_s": 0.8825
+    }
+  ],
+  "single_field": [
+    {
+      "host": "google",
+      "shard": "sfc",
+      "param": "2t",
+      "levelist": null,
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-3h-oper-fc-sfc.grib2",
+      "offset": 83857030,
+      "expected_bytes": 1374711,
+      "bytes_read": 1374711,
+      "status": 206,
+      "content_range": "bytes 83857030-85231740/91128897",
+      "headers_s": 0.826,
+      "complete": true,
+      "sha256": "e10553a7acd9b5c9af75d80e88b496a65d353ef7d611a48f3261d4ae86538507",
+      "saved_path": "/Users/zmy/pycharm/climate_pipeline/download/output/ifs-0p1-speed-20261021/samples/google-sfc-2t-sfc.grib2",
+      "elapsed_s": 1.9147,
+      "MiB_per_s_including_connect": 0.6847
+    }
+  ],
+  "full_subset": null,
+  "limits": {
+    "workers": 4,
+    "max_batch_bytes": 134217728,
+    "max_batch_s": 90,
+    "payload_includes_connect": true
+  },
+  "limitations": [
+    "Short public-data sample; speed varies with routing and load.",
+    "No production configuration, service or scheduler changed.",
+    "GRIB framing and hashes checked; decode is a separate check."
+  ],
+  "finished_at_utc": "2026-10-21T07:47:30.682233+00:00"
+}

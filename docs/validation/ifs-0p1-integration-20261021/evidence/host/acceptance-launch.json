@@ -1,0 +1,17 @@
+{
+  "pid": 3054233,
+  "files": [
+    {
+      "name": "audit_api.py",
+      "sha256": "9f010cae4adcb3c25a59107462e415be009edbc575ec440c4d63cd203e5266f3",
+      "container": "climate-watcher"
+    },
+    {
+      "name": "audit_native.py",
+      "sha256": "835882d9c2a1089175032fe6e1b5506cd2e8a028fee6b8dff93fcd9c1b64f557",
+      "container": "zhangmy-dev"
+    }
+  ],
+  "runner_sha256": "9d105a73c666f61957f85f42863fe375230c81706e127999774bd734c36447d2",
+  "receipt": "/home/zhangmingyu/operation/releases/ifs-0p1-20261021/acceptance.json"
+}

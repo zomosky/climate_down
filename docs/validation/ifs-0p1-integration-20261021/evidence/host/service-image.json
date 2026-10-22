@@ -1,0 +1,41 @@
+{
+  "old_image": "sha256:b18949804aeb44f44e3a9f71e3afbf12e42911a8dbb953fe75696440374ad85e",
+  "rollback_tag": "climate-watcher:pre-ifs0p1-20261021",
+  "new_image": "sha256:5ce85582d71a44d5f7822b15c89471915fb4f9bbb7e18f1da86677c9f26b8c6c",
+  "new_tag": "climate-watcher:ifs0p1-20261021",
+  "build_s": 3.682,
+  "profile_check": {
+    "new_source": "ifs-hres-0p1",
+    "old_source": "ifs-hres",
+    "profile_sha256": "b39caaee4098e273e23658c28fb41de1f6a981c9a855d641c801ced60f4f3806"
+  },
+  "canary_id": "68184967ebef55ebcae9f95ed0b85dad2bd538d132e73b5377a1ae9118d6ae44",
+  "canary_health": {
+    "status": "ok",
+    "version": "0.1.0",
+    "warm": {
+      "rounds": 0,
+      "running": true,
+      "last_ok": null,
+      "last_seconds": null,
+      "last_error": null,
+      "warmed": []
+    },
+    "checks": {
+      "file_descriptors": {
+        "status": "ok",
+        "used": 15,
+        "soft_limit": 1024,
+        "hard_limit": 524288,
+        "remaining": 1009,
+        "used_ratio": 0.0146,
+        "max_used_ratio": 0.9,
+        "min_free": 32
+      },
+      "homepage": {
+        "status": "ok",
+        "entry_assets_checked": 2
+      }
+    }
+  }
+}

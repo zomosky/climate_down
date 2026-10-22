@@ -1,0 +1,80 @@
+{"event": "field_verified", "field": "cp_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "d2m", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "fg10_max", "level": null, "native_samples": 67, "missing": 18}
+{"event": "field_verified", "field": "gh", "level": 850, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "mn2t3_min", "level": null, "native_samples": 48, "missing": 37}
+{"event": "field_verified", "field": "msl", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "mucape", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "mx2t3_max", "level": null, "native_samples": 48, "missing": 37}
+{"event": "field_verified", "field": "q", "level": 850, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "r", "level": 850, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "ro_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "sf_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "skt", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "sp", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "ssr_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "ssrd_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "str_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "strd_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "t", "level": 850, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "t2m", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "tcc", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "tcwv", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "tp_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "ttr_accum", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "u", "level": 850, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "u10", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "u100", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "v", "level": 850, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "v10", "level": null, "native_samples": 85, "missing": 0}
+{"event": "field_verified", "field": "v100", "level": null, "native_samples": 85, "missing": 0}
+{
+  "status": "ok",
+  "source": "ifs-hres-0p1",
+  "date": "20261020",
+  "cycle": 12,
+  "checked_at_utc": "2026-10-21T09:54:50.753944+00:00",
+  "elapsed_s": 78.043,
+  "development_prefix": false,
+  "files": 85,
+  "grid": [
+    401,
+    701
+  ],
+  "spacing_degrees": 0.1,
+  "variables": 30,
+  "compared_native_planes": 2458,
+  "all_values_match_native": true,
+  "missingness_preserved": true,
+  "init_and_valid_time_verified": true,
+  "units_and_parameter_ids_verified": true,
+  "noncanonical_preview_messages": [
+    {
+      "path": "/climate_data/ifs-hres-0p1/20261020/12z/f000.subset.grib2",
+      "offset": 17918325,
+      "file_lead": 0,
+      "field": "mx2t3_max",
+      "level": null,
+      "paramId": 228026,
+      "start": 0,
+      "end": 3,
+      "stepType": "max",
+      "units": "K",
+      "verified_all_zero": true
+    },
+    {
+      "path": "/climate_data/ifs-hres-0p1/20261020/12z/f000.subset.grib2",
+      "offset": 17918773,
+      "file_lead": 0,
+      "field": "mn2t3_min",
+      "level": null,
+      "paramId": 228027,
+      "start": 0,
+      "end": 3,
+      "stepType": "min",
+      "units": "K",
+      "verified_all_zero": true
+    }
+  ],
+  "peak_rss_MiB": 485.3
+}

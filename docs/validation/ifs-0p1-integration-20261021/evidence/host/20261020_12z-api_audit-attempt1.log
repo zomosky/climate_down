@@ -1,0 +1,31 @@
+Traceback (most recent call last):
+  File "/tmp/ifs-0p1-integration-20261021/audit_api.py", line 165, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/tmp/ifs-0p1-integration-20261021/audit_api.py", line 58, in main
+    native=json_case('native_sites','/api/v1/query',spec)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/ifs-0p1-integration-20261021/audit_api.py", line 54, in json_case
+    payload,_=request(name,path,body)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/ifs-0p1-integration-20261021/audit_api.py", line 45, in request
+    with urllib.request.urlopen(req,timeout=130) as response:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 521, in open
+    response = meth(req, response)
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 630, in http_response
+    response = self.parent.error(
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 559, in error
+    return self._call_chain(*args)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 639, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 404: Not Found

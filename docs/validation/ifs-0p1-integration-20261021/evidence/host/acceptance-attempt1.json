@@ -1,0 +1,18 @@
+{
+  "status": "failed",
+  "date": "20261020",
+  "cycle": 12,
+  "started_at_utc": "2026-10-21T08:51:20.709248+00:00",
+  "stages": {
+    "api_audit": {
+      "status": "failed",
+      "started_at_utc": "2026-10-21T09:46:50.965110+00:00",
+      "finished_at_utc": "2026-10-21T09:46:51.340249+00:00",
+      "seconds": 0.375,
+      "returncode": 1
+    }
+  },
+  "product_observed_at_utc": "2026-10-21T09:46:50.965074+00:00",
+  "finished_at_utc": "2026-10-21T09:46:51.340618+00:00",
+  "error": "RuntimeError('api_audit failed; see dedicated log')"
+}

@@ -27,6 +27,7 @@ from climate_download.sources import ecmwf_probabilities as _ecmwf_probabilities
 from climate_download.sources import gfs as _gfs  # noqa: F401
 from climate_download.sources import hrrr as _hrrr  # noqa: F401
 from climate_download.sources import icon as _icon  # noqa: F401
+from climate_download.sources import ifs_split as _ifs_split  # noqa: F401
 
 __all__ = [
     "BaseSource",

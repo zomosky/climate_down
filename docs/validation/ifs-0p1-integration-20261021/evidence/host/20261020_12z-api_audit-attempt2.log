@@ -1,0 +1,12 @@
+{"name": "native_sites", "path": "/api/v1/query", "status": 200, "seconds": 0.3936, "bytes": 2647, "sha256": "35f35a019f7cf562e6c75ab1bff4d39d048074897eb2c752693cf4fec7811ade", "warning_count": null, "started_at_utc": "2026-10-21T09:51:31.229290+00:00", "finished_at_utc": "2026-10-21T09:51:31.623005+00:00"}
+{"name": "native_radiation_flux", "path": "/api/v1/query", "status": 200, "seconds": 0.1051, "bytes": 1439, "sha256": "db75040a0b937747f61831c1f45ba4c1e21ffe657ba6aa2fe58cacd02e37cf76", "warning_count": null, "started_at_utc": "2026-10-21T09:51:31.821992+00:00", "finished_at_utc": "2026-10-21T09:51:31.927092+00:00"}
+{"name": "native_extreme_missingness", "path": "/api/v1/query", "status": 200, "seconds": 0.1068, "bytes": 9793, "sha256": "61848fef463e937084b187d2994382bf0ad88eadea692ba20c5f2d8752a8770c", "warning_count": null, "started_at_utc": "2026-10-21T09:51:31.928110+00:00", "finished_at_utc": "2026-10-21T09:51:32.034916+00:00"}
+{"name": "sites_15min", "path": "/api/v1/query", "status": 200, "seconds": 0.7143, "bytes": 31064, "sha256": "bcf907eb6da095d5b0dfd7d28a119552b56aedfe2126ccfaa6815c35cde608ae", "warning_count": null, "started_at_utc": "2026-10-21T09:51:32.037730+00:00", "finished_at_utc": "2026-10-21T09:51:32.752083+00:00"}
+Traceback (most recent call last):
+  File "/tmp/ifs-0p1-integration-20261021/audit_api.py", line 182, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/tmp/ifs-0p1-integration-20261021/audit_api.py", line 110, in main
+    assert np.all(np.diff(axis.asi8)==15*60*10**9)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

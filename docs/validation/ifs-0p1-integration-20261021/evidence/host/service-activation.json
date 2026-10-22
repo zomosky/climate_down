@@ -1,0 +1,41 @@
+{
+  "started_at": "2026-10-21T08:12:52.509697+00:00",
+  "old_image": "sha256:b18949804aeb44f44e3a9f71e3afbf12e42911a8dbb953fe75696440374ad85e",
+  "new_image": "sha256:5ce85582d71a44d5f7822b15c89471915fb4f9bbb7e18f1da86677c9f26b8c6c",
+  "rollback_tag": "climate-watcher:pre-ifs0p1-20261021",
+  "status": "ok",
+  "elapsed_s": 11.543,
+  "health": {
+    "status": "ok",
+    "version": "0.1.0",
+    "warm": {
+      "rounds": 0,
+      "running": true,
+      "last_ok": null,
+      "last_seconds": null,
+      "last_error": null,
+      "warmed": []
+    },
+    "checks": {
+      "file_descriptors": {
+        "status": "ok",
+        "used": 14,
+        "soft_limit": 1024,
+        "hard_limit": 524288,
+        "remaining": 1010,
+        "used_ratio": 0.0137,
+        "max_used_ratio": 0.9,
+        "min_free": 32
+      },
+      "homepage": {
+        "status": "ok",
+        "entry_assets_checked": 2
+      }
+    }
+  },
+  "old_025_query_sha256": "409b5aff844303ed7023f689ce592e5e859d52c405cc6468f9ae1275431a0321",
+  "old_025_query_unchanged": true,
+  "memory_limit_bytes": 25769803776,
+  "nano_cpus": 12000000000,
+  "canary_removed": true
+}

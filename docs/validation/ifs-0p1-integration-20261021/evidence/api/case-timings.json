@@ -1,0 +1,182 @@
+[
+  {
+    "name": "native_sites",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 0.3936,
+    "bytes": 2647,
+    "sha256": "35f35a019f7cf562e6c75ab1bff4d39d048074897eb2c752693cf4fec7811ade",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:51:31.229290+00:00",
+    "finished_at_utc": "2026-10-21T09:51:31.623005+00:00",
+    "previous_success_reused": true
+  },
+  {
+    "name": "native_radiation_flux",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 0.1051,
+    "bytes": 1439,
+    "sha256": "db75040a0b937747f61831c1f45ba4c1e21ffe657ba6aa2fe58cacd02e37cf76",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:51:31.821992+00:00",
+    "finished_at_utc": "2026-10-21T09:51:31.927092+00:00",
+    "previous_success_reused": true
+  },
+  {
+    "name": "native_extreme_missingness",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 0.1068,
+    "bytes": 9793,
+    "sha256": "61848fef463e937084b187d2994382bf0ad88eadea692ba20c5f2d8752a8770c",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:51:31.928110+00:00",
+    "finished_at_utc": "2026-10-21T09:51:32.034916+00:00",
+    "previous_success_reused": true
+  },
+  {
+    "name": "sites_15min",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 0.7143,
+    "bytes": 31064,
+    "sha256": "bcf907eb6da095d5b0dfd7d28a119552b56aedfe2126ccfaa6815c35cde608ae",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:51:32.037730+00:00",
+    "finished_at_utc": "2026-10-21T09:51:32.752083+00:00",
+    "previous_success_reused": true
+  },
+  {
+    "name": "grid",
+    "path": "/api/v1/query/grid",
+    "status": 200,
+    "seconds": 0.1022,
+    "bytes": 688,
+    "sha256": "1c794dc3ed0229e61d6c0c1970ec996b137cb021a0a9f4f0d6aafa1c12fc2c1a",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:27.244150+00:00",
+    "finished_at_utc": "2026-10-21T09:53:27.346431+00:00"
+  },
+  {
+    "name": "train",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 0.091,
+    "bytes": 1742,
+    "sha256": "d05a6edc57b27eeedb6ece23db4bcd3424e0ba5fff71b86d6b5ef11f9b07062a",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:27.371936+00:00",
+    "finished_at_utc": "2026-10-21T09:53:27.462966+00:00"
+  },
+  {
+    "name": "train_mix",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 0.0842,
+    "bytes": 1742,
+    "sha256": "d05a6edc57b27eeedb6ece23db4bcd3424e0ba5fff71b86d6b5ef11f9b07062a",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:27.463870+00:00",
+    "finished_at_utc": "2026-10-21T09:53:27.548107+00:00"
+  },
+  {
+    "name": "province_weighted",
+    "path": "/api/v1/query",
+    "status": 200,
+    "seconds": 3.8928,
+    "bytes": 2045,
+    "sha256": "5a4a10dd17825b75512866ff8a66cd84179f4657ba826bf5593bcce94ac7c2a2",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:27.548918+00:00",
+    "finished_at_utc": "2026-10-21T09:53:31.441801+00:00"
+  },
+  {
+    "name": "export_csv",
+    "path": "/api/v1/query?format=csv",
+    "status": 200,
+    "seconds": 0.6672,
+    "bytes": 27671,
+    "sha256": "9ccaa5bf04a483996bed5c87fb77beb126b1f38c4c004dc6ae1cafcab66ddbd2",
+    "warning_count": "1",
+    "started_at_utc": "2026-10-21T09:53:31.442866+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.110131+00:00"
+  },
+  {
+    "name": "export_parquet",
+    "path": "/api/v1/query?format=parquet",
+    "status": 200,
+    "seconds": 0.0432,
+    "bytes": 24465,
+    "sha256": "b14a5d58ead09e4c10dcea926e7c95a9d53e745b0385028b497316a048dee63b",
+    "warning_count": "1",
+    "started_at_utc": "2026-10-21T09:53:32.116446+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.159667+00:00"
+  },
+  {
+    "name": "export_arrow",
+    "path": "/api/v1/query?format=arrow",
+    "status": 200,
+    "seconds": 0.015,
+    "bytes": 20138,
+    "sha256": "94050f83e0933ecec11397cd5a6c12d36178667019ab6c83f755ad8912e95e44",
+    "warning_count": "1",
+    "started_at_utc": "2026-10-21T09:53:32.204296+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.219361+00:00"
+  },
+  {
+    "name": "export_netcdf",
+    "path": "/api/v1/query?format=netcdf",
+    "status": 200,
+    "seconds": 0.0214,
+    "bytes": 76373,
+    "sha256": "35adddf0812037c02426213de42c0a3c3f5c14e090640dcd87d52b69e55bc04b",
+    "warning_count": "1",
+    "started_at_utc": "2026-10-21T09:53:32.224957+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.246502+00:00"
+  },
+  {
+    "name": "health",
+    "path": "/api/v1/health",
+    "status": 200,
+    "seconds": 0.0026,
+    "bytes": 665,
+    "sha256": "2833ebeac6fae72e1edd1061396f347b9a72e27f1d5e9c454cb172b2c8feadd7",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:32.283182+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.285753+00:00"
+  },
+  {
+    "name": "monitor",
+    "path": "/api/v1/sources/ifs-hres-0p1/inits/20261020/12",
+    "status": 200,
+    "seconds": 0.0014,
+    "bytes": 2633,
+    "sha256": "abe842478c45eddb71fe701a95dca170f79eff69aa3f3e64a28adc2864dfb5df",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:32.286274+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.287710+00:00"
+  },
+  {
+    "name": "source_metadata",
+    "path": "/api/v1/sources/ifs-hres-0p1",
+    "status": 200,
+    "seconds": 0.0021,
+    "bytes": 8203,
+    "sha256": "22e3d4a1aa5565471be7b7e006783da82ca8071dc27313b3b6b31726507d285a",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:32.288196+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.290354+00:00"
+  },
+  {
+    "name": "variable_catalog",
+    "path": "/api/v1/catalog/variables?source=ifs-hres-0p1",
+    "status": 200,
+    "seconds": 0.0338,
+    "bytes": 9555,
+    "sha256": "e8e562cd64fe150794743aef846a9dc73a402456f326246e16515da17c6745ba",
+    "warning_count": null,
+    "started_at_utc": "2026-10-21T09:53:32.291027+00:00",
+    "finished_at_utc": "2026-10-21T09:53:32.324819+00:00"
+  }
+]

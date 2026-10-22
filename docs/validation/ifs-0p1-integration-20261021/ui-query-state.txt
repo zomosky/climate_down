@@ -1,0 +1,151 @@
+- button "跳到主要内容"
+- banner:
+  - link "Climate Watcher 平台概览":
+    - /url: "#/overview"
+    - generic: Climate Watcher
+  - navigation "主导航":
+    - link "平台概览":
+      - /url: "#/overview"
+    - link "运行监控":
+      - /url: "#/"
+    - link "预测数据":
+      - /url: "#/explore"
+    - link "卫星数据":
+      - /url: "#/obs"
+    - link "再分析数据":
+      - /url: "#/reanalysis"
+    - link "源与变量":
+      - /url: "#/sources"
+    - link "静态数据":
+      - /url: "#/static"
+  - link "API 文档 ↗":
+    - /url: /docs
+- main:
+  - heading "预测数据" [level=1]
+  - paragraph: 按起报时间、预报时效和空间范围查询数值天气预报。
+  - text: 查询条件
+  - generic: 变量 → 时间 → 空间
+  - group "变量（同类预测可跨源多选，气压层已按层展开）":
+    - generic: 变量（同类预测可跨源多选，气压层已按层展开）
+    - button "已选 2 个变量 ifs-hres-0p1 / ssrd_accum、ifs-hres-0p1 / t2m 编辑":
+      - generic: 已选 2 个变量
+      - generic: ifs-hres-0p1 / ssrd_accum、ifs-hres-0p1 / t2m
+      - generic: 编辑 ＋
+  - generic: 数据可用性（zarr 覆盖 · 点最新 init 直接填入时间）
+  - generic: aifs-ens-probabilities
+  - generic: 1890 个 · 20250701~20261021
+  - generic: 20261021 0z ↵
+  - generic: aifs-single
+  - generic: 293 个 · 20260101~20261020
+  - generic: 20261020 12z ↵
+  - generic: dwd-icon
+  - generic: 222 个 · 20260622~20261021
+  - generic: 20261021 0z ↵
+  - generic: gfs-0p25
+  - generic: 659 个 · 20250101~20261020
+  - generic: 20261020 12z ↵
+  - generic: ifs-ens-probabilities
+  - generic: 2393 个 · 20230712~20261021
+  - generic: 20261021 0z ↵
+  - generic: ifs-hres
+  - generic: 1317 个 · 20250101~20261021
+  - generic: 20261021 0z ↵
+  - generic: ifs-hres-0p1
+  - generic: 1 个 · 20261020~20261020
+  - generic: 20261020 12z ↵
+  - generic: 模式 ⓘ
+  - radiogroup "模式 ⓘ":
+    - radio "operation 实时" [checked]
+    - generic: operation 实时
+    - radio "train 回测"
+    - generic: train 回测
+  - generic: 起始时间（业务时区） ⓘ
+  - combobox "起始时间（业务时区） ⓘ": 2026-10-21 08:00
+  - generic: 时长（小时） ⓘ
+  - button "减少数值":
+  - button "增加数值":
+  - spinbutton "时长（小时） ⓘ"
+  - generic: cycle ⓘ
+  - combobox "cycle ⓘ"
+  - generic: 自动（profile 默认）
+  - checkbox "调试：固定某个 init"
+  - generic: 调试：固定某个 init
+  - generic: ⓘ
+  - group "空间选择":
+    - generic: 空间选择
+    - tablist:
+      - tab "站点" [selected]
+      - tab "省份"
+      - tab "区域网格"
+    - tabpanel "站点":
+      - table:
+        - rowgroup:
+          - row "站点 ID 纬度 经度":
+            - columnheader "站点 ID":
+              - generic: 站点 ID
+            - columnheader "纬度":
+              - generic: 纬度
+            - columnheader "经度":
+              - generic: 经度
+            - columnheader
+      - table:
+        - rowgroup:
+          - row "jinan 减少数值 增加数值 36.6 减少数值 增加数值 117 ✕":
+            - cell "jinan":
+              - textbox: jinan
+            - cell "减少数值 增加数值 36.6":
+              - button "减少数值":
+              - button "增加数值":
+              - spinbutton: "36.6"
+            - cell "减少数值 增加数值 117":
+              - button "减少数值":
+              - button "增加数值":
+              - spinbutton: "117"
+            - cell "✕":
+              - button "✕":
+                - generic: ✕
+      - button "+ 加站点":
+        - generic: + 加站点
+      - button "粘贴 CSV":
+        - generic: 粘贴 CSV
+      - radiogroup "radio-group":
+        - radio "双线性插值" [checked]
+        - generic: 双线性插值
+        - radio "最近格点"
+        - generic: 最近格点
+      - text: 领域
+      - combobox
+      - generic: 关
+      - button "地图选点":
+        - generic: 地图选点
+  - generic: 重采样 ⓘ
+  - combobox "重采样 ⓘ"
+  - generic: 15 分钟
+  - generic: 去累积 ⓘ
+  - switch "去累积 ⓘ" [checked]
+  - generic: 时区 ⓘ
+  - combobox "时区 ⓘ"
+  - generic: 北京
+  - button "查询":
+    - generic: 查询
+  - button "下载 ▾":
+    - generic: 下载 ▾
+  - button "API 调用代码（复制到训练/验证脚本）":
+    - generic: API 调用代码（复制到训练/验证脚本）
+  - region "查询提示":
+    - button "查询提示 1 条 查看详情":
+      - generic: "!"
+      - generic: 查询提示 1 条
+      - text: 查看详情
+      - generic: ⌄
+    - paragraph: "solar_quality: 2 interval energy adjustments; details in zrread_solar_corrections attributes (original/corrected W/m² and signed Wh/m²)"
+  - text: 查询结果
+  - generic: 曲线 · 网格 · 区域分布
+  - switch [checked]
+  - generic: 双轴
+  - switch
+  - generic: 起报分段
+  - img "华茂能联"
+  - generic: Climate Watcher
+  - link "数据说明与使用约定":
+    - /url: "#/sources"

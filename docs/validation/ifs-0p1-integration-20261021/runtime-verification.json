@@ -1,0 +1,93 @@
+{
+  "checked_at_utc": "2026-10-21T10:03:07.410951+00:00",
+  "checks": {
+    "old_025_query": {
+      "unchanged": true,
+      "rows": 96,
+      "sha256": "409b5aff844303ed7023f689ce592e5e859d52c405cc6468f9ae1275431a0321"
+    },
+    "container_limits_unchanged": {
+      "zhangmy-dev": {
+        "memory_bytes": 38654705664,
+        "nano_cpus": 17999998976,
+        "effective_cpu_limit": 17.999998976,
+        "image": "sha256:05a73f04bc364a4edd562fa6c1ddf06a4f7a2649ecf4a5974966bb020fe476ad",
+        "running": true,
+        "restart_count": 0
+      },
+      "climate-watcher": {
+        "memory_bytes": 25769803776,
+        "nano_cpus": 12000000000,
+        "effective_cpu_limit": 12.0,
+        "image": "sha256:5ce85582d71a44d5f7822b15c89471915fb4f9bbb7e18f1da86677c9f26b8c6c",
+        "running": true,
+        "restart_count": 0
+      }
+    },
+    "health": {
+      "status": "ok",
+      "version": "0.1.0",
+      "warm": {
+        "rounds": 136,
+        "running": false,
+        "last_ok": 1792576963.0802114,
+        "last_seconds": 2.558,
+        "last_error": null,
+        "warmed": [
+          "status days=0 cycles=全部 1.24s",
+          "status days=14 cycles=全部 0.19s",
+          "status days=0 cycles=(0, 12) 0.69s",
+          "status days=14 cycles=(0, 12) 0.19s",
+          "sources 0.24s",
+          "obs_overview 0.00s",
+          "satellite_status days=0 0.00s",
+          "satellite_status days=14 0.00s",
+          "reanalysis_status 0.00s",
+          "obs_nc_status 0.00s"
+        ]
+      },
+      "checks": {
+        "file_descriptors": {
+          "status": "ok",
+          "used": 19,
+          "soft_limit": 1024,
+          "hard_limit": 524288,
+          "remaining": 1005,
+          "used_ratio": 0.0186,
+          "max_used_ratio": 0.9,
+          "min_free": 32
+        },
+        "homepage": {
+          "status": "ok",
+          "entry_assets_checked": 2
+        }
+      }
+    },
+    "scheduler": {
+      "active": true,
+      "all_prior_cron_lines_preserved": true,
+      "new_entries": 5
+    },
+    "restore_guard_dry_run": {
+      "ready": true,
+      "memory": {
+        "limit_bytes": 38654705664,
+        "used_bytes": 32209625088,
+        "inactive_file_bytes": 29174513664,
+        "headroom_bytes": 35619594240
+      },
+      "runner": "/home/zhangmingyu/operation/restore_scan.sh",
+      "source": "ifs-hres-0p1",
+      "job": "config/jobs/ifs_0p1_zarr_china_ser.yaml"
+    },
+    "reconcile": "HEALTHY ifs-hres-0p1 20261020 12z",
+    "real_restore_scanner_noop": {
+      "returncode": 0,
+      "metadata_mtime_unchanged": true,
+      "output": "restore_scan: OK\n"
+    },
+    "zarr_bytes": 591392808,
+    "disk_free_bytes": 4375510073344
+  },
+  "status": "ok"
+}

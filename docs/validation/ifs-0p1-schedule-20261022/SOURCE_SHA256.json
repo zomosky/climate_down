@@ -1,0 +1,7 @@
+{
+  "deploy/download_ifs_0p1.py": "4f3ba1b9cf25a3b4048f93b85e3087b7859738e6ea7adc7dbdf4ea4f00d4b5fd",
+  "deploy/IFS_0P1.md": "f92c65908df3e67b3219b8e86ed97cc447bdc7601dbe20457097063027019a35",
+  "tests/test_ifs_0p1_download_guard.py": "a18318269cf316426234cf70a7d120d0e4636511400df97d89cc0b307788de37",
+  "tests/test_ifs_0p1_polling.py": "11c8143a7cfe8efe0debff8154436f060e644a0ed6e4694fbbdb0fb8a089de3a",
+  "tests/test_ifs_0p1_policy.py": "f3a73f32a64ca26798f107fa33bad52f7a8970098c6ae9ad1ea72bc6c6698a22"
+}

@@ -1,0 +1,9 @@
+# Separate source from ifs-hres (0.25 degrees); no existing source is replaced.
+# IFS 0.1-degree oper/fc uses separate sfc/pl files with independent offsets.
+# Metadata and payloads are requested through the existing retry/range pipeline.
+type: ifs-split
+name: ifs-hres-0p1
+description: ECMWF IFS 0.1-degree atmospheric forecast (oper/fc, split sfc/pl)
+url_template: >-
+  https://storage.googleapis.com/ecmwf-open-data/{date}/{cycle:02d}z/ifs/0p1/oper/{date}{cycle:02d}0000-{step}h-oper-fc-{levtype}.{suffix}
+supports_byte_range: true

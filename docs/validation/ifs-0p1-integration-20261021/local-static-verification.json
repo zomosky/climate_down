@@ -1,0 +1,33 @@
+{
+  "local_original_025_hashes_unchanged": true,
+  "helper_syntax_ok": [
+    "activate_operations.py",
+    "accept_when_ready.py",
+    "collect_evidence.py",
+    "audit_api.py",
+    "audit_native.py",
+    "finish_first.py",
+    "run_day.py",
+    "progress.py"
+  ],
+  "focused_tests": {
+    "download": {
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "restore": {
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reader": {
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  }
+}

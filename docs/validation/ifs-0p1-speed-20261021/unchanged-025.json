@@ -1,0 +1,11 @@
+{
+  "original_0p25_files_unchanged": true,
+  "new_source": "ifs-hres-0p1",
+  "variable_groups_match_existing_production": true,
+  "baseline_sha256": {
+    "config/sources/ifs.yaml": "139626939b281ec8da4653d3279d991f6f98371084333a2e58fff5255cedca86",
+    "config/jobs/ifs_renewables.yaml": "7dab941bc22ec33518069bfed7a94879b8a96d728256191ed0d2d31172f0e128",
+    "config/jobs/ifs_renewables_ser.yaml": "0d614f431d7e7397232283b05360ad87cd4a37628912ae33788569c166a6071c",
+    "src/climate_download/sources/aifs.py": "c04834a487e7fa0f0dc2b60ec5aa8b97ca7d80b3736edda0cee52b006221db77"
+  }
+}

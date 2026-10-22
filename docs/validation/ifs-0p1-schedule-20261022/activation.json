@@ -1,0 +1,28 @@
+{
+  "mode": "active",
+  "at_utc": "2026-10-22T01:25:31.767715+00:00",
+  "cron_before_sha256": "7d95d7b25713a61de634d00a3cd2c45ba041a53538901874f2c93c470f5c8208",
+  "cron_after_sha256": "14c0769818747d828ec39e749b999d86662cfebfd843dfdc1f9bd3f17c422f7a",
+  "new_block": "# BEGIN IFS-0P1 Google\n5-55/10 4-7 * * * /usr/bin/python3 /home/zhangmingyu/operation/download_ifs_0p1.py --cycle 12 >> /home/zhangmingyu/operation/logs/download_ifs_0p1_12z.log 2>&1\n5-55/10 16-19 * * * /usr/bin/python3 /home/zhangmingyu/operation/download_ifs_0p1.py --cycle 0 >> /home/zhangmingyu/operation/logs/download_ifs_0p1_00z.log 2>&1\n*/10 * * * * /usr/bin/python3 /home/zhangmingyu/operation/restore_ifs_0p1.py >> /home/zhangmingyu/operation/logs/restore_ifs_0p1.log 2>&1\n# END IFS-0P1 Google",
+  "script_sha256": "4f3ba1b9cf25a3b4048f93b85e3087b7859738e6ea7adc7dbdf4ea4f00d4b5fd",
+  "all_other_cron_content_preserved": true,
+  "existing_scripts_unchanged": true,
+  "schedule_validation": [
+    {
+      "cycle": 12,
+      "runs_per_window": 24,
+      "first_bjt": "04:05",
+      "last_bjt": "07:55",
+      "gap_minutes": 10,
+      "validated_timestamps": 72
+    },
+    {
+      "cycle": 0,
+      "runs_per_window": 24,
+      "first_bjt": "16:05",
+      "last_bjt": "19:55",
+      "gap_minutes": 10,
+      "validated_timestamps": 72
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+[
+  {
+    "shortName": "2d",
+    "paramId": 168,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "K"
+  },
+  {
+    "shortName": "cp",
+    "paramId": 143,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "m"
+  },
+  {
+    "shortName": "100v",
+    "paramId": 228247,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "m s**-1"
+  },
+  {
+    "shortName": "ssrd",
+    "paramId": 169,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "J m**-2"
+  },
+  {
+    "shortName": "sf",
+    "paramId": 144,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "m of water equivalent"
+  },
+  {
+    "shortName": "skt",
+    "paramId": 235,
+    "typeOfLevel": "surface",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "K"
+  },
+  {
+    "shortName": "10fg",
+    "paramId": 49,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "max",
+    "startStep": 144,
+    "endStep": 150,
+    "units": "m s**-1"
+  },
+  {
+    "shortName": "sp",
+    "paramId": 134,
+    "typeOfLevel": "surface",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "Pa"
+  },
+  {
+    "shortName": "msl",
+    "paramId": 151,
+    "typeOfLevel": "meanSea",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "Pa"
+  },
+  {
+    "shortName": "tcwv",
+    "paramId": 137,
+    "typeOfLevel": "entireAtmosphere",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "kg m**-2"
+  },
+  {
+    "shortName": "ro",
+    "paramId": 205,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "m"
+  },
+  {
+    "shortName": "strd",
+    "paramId": 175,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "J m**-2"
+  },
+  {
+    "shortName": "tp",
+    "paramId": 228,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "m"
+  },
+  {
+    "shortName": "ssr",
+    "paramId": 176,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "J m**-2"
+  },
+  {
+    "shortName": "str",
+    "paramId": 177,
+    "typeOfLevel": "surface",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "J m**-2"
+  },
+  {
+    "shortName": "mucape",
+    "paramId": 228235,
+    "typeOfLevel": "mostUnstableParcel",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "J kg**-1"
+  },
+  {
+    "shortName": "tcc",
+    "paramId": 164,
+    "typeOfLevel": "entireAtmosphere",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "(0 - 1)"
+  },
+  {
+    "shortName": "ttr",
+    "paramId": 179,
+    "typeOfLevel": "nominalTop",
+    "stepType": "accum",
+    "startStep": 0,
+    "endStep": 150,
+    "units": "J m**-2"
+  },
+  {
+    "shortName": "100u",
+    "paramId": 228246,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "m s**-1"
+  },
+  {
+    "shortName": "10u",
+    "paramId": 165,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "m s**-1"
+  },
+  {
+    "shortName": "10v",
+    "paramId": 166,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "m s**-1"
+  },
+  {
+    "shortName": "2t",
+    "paramId": 167,
+    "typeOfLevel": "heightAboveGround",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "K"
+  },
+  {
+    "shortName": "gh",
+    "paramId": 156,
+    "typeOfLevel": "isobaricInhPa",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "gpm"
+  },
+  {
+    "shortName": "t",
+    "paramId": 130,
+    "typeOfLevel": "isobaricInhPa",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "K"
+  },
+  {
+    "shortName": "q",
+    "paramId": 133,
+    "typeOfLevel": "isobaricInhPa",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "kg kg**-1"
+  },
+  {
+    "shortName": "r",
+    "paramId": 157,
+    "typeOfLevel": "isobaricInhPa",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "%"
+  },
+  {
+    "shortName": "u",
+    "paramId": 131,
+    "typeOfLevel": "isobaricInhPa",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "m s**-1"
+  },
+  {
+    "shortName": "v",
+    "paramId": 132,
+    "typeOfLevel": "isobaricInhPa",
+    "stepType": "instant",
+    "startStep": 150,
+    "endStep": 150,
+    "units": "m s**-1"
+  }
+]

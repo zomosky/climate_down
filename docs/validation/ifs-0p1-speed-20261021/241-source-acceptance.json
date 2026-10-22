@@ -1,0 +1,205 @@
+{
+  "location": "241 / zhangmy-dev / direct",
+  "source": "ifs-hres-0p1",
+  "date": "20261020",
+  "cycle": 12,
+  "step": 3,
+  "variables": 30,
+  "bytes": 60133161,
+  "MiB": 57.3475,
+  "elapsed_s_including_metadata_manifest": 53.1886,
+  "MiB_per_s_including_metadata_manifest": 1.0782,
+  "workers": 4,
+  "http_payload_requests": 21,
+  "sha256": "283e74ad6151d79b705a4a5a2b6a053137ffeefab7a3cc774788795a9234243c",
+  "matches_fully_decoded_local_product": true,
+  "temporary_outputs_cleaned_after_run": true,
+  "production_files_changed": false,
+  "manifest": {
+    "schema_version": 1,
+    "source": {
+      "name": "ifs-hres-0p1",
+      "description": "ECMWF IFS 0.1-degree atmospheric forecast (oper/fc, split sfc/pl)"
+    },
+    "init_time": "2026-10-20T12:00:00+00:00",
+    "date": "20261020",
+    "cycle": 12,
+    "completed_at": "2026-10-21T07:52:50.410324+00:00",
+    "variables": [
+      {
+        "name": "wind_100m",
+        "levtype": "sfc",
+        "params": [
+          "100u",
+          "100v"
+        ],
+        "levels": null
+      },
+      {
+        "name": "wind_10m",
+        "levtype": "sfc",
+        "params": [
+          "10u",
+          "10v"
+        ],
+        "levels": null
+      },
+      {
+        "name": "wind_gust_10m",
+        "levtype": "sfc",
+        "params": [
+          "10fg"
+        ],
+        "levels": null
+      },
+      {
+        "name": "pl_850",
+        "levtype": "pl",
+        "params": [
+          "u",
+          "v",
+          "t",
+          "q",
+          "r",
+          "gh"
+        ],
+        "levels": [
+          "850"
+        ]
+      },
+      {
+        "name": "temp_2m",
+        "levtype": "sfc",
+        "params": [
+          "2t"
+        ],
+        "levels": null
+      },
+      {
+        "name": "temp_skin",
+        "levtype": "sfc",
+        "params": [
+          "skt"
+        ],
+        "levels": null
+      },
+      {
+        "name": "temp_minmax_3h",
+        "levtype": "sfc",
+        "params": [
+          "mn2t3",
+          "mx2t3"
+        ],
+        "levels": null
+      },
+      {
+        "name": "humidity_2m",
+        "levtype": "sfc",
+        "params": [
+          "2d"
+        ],
+        "levels": null
+      },
+      {
+        "name": "pressure_sfc",
+        "levtype": "sfc",
+        "params": [
+          "sp"
+        ],
+        "levels": null
+      },
+      {
+        "name": "pressure_msl",
+        "levtype": "sfc",
+        "params": [
+          "msl"
+        ],
+        "levels": null
+      },
+      {
+        "name": "radiation_surface",
+        "levtype": "sfc",
+        "params": [
+          "ssrd",
+          "strd",
+          "ssr",
+          "str",
+          "ttr"
+        ],
+        "levels": null
+      },
+      {
+        "name": "cloud_total",
+        "levtype": "sfc",
+        "params": [
+          "tcc"
+        ],
+        "levels": null
+      },
+      {
+        "name": "precip",
+        "levtype": "sfc",
+        "params": [
+          "tp",
+          "cp",
+          "sf",
+          "ro"
+        ],
+        "levels": null
+      },
+      {
+        "name": "tcwv_column",
+        "levtype": "sfc",
+        "params": [
+          "tcwv"
+        ],
+        "levels": null
+      },
+      {
+        "name": "cape",
+        "levtype": "sfc",
+        "params": [
+          "mucape"
+        ],
+        "levels": null
+      }
+    ],
+    "download": {
+      "output_dir": "/tmp/ifs-0p1-speed-5p_me90u/output",
+      "workers": 4,
+      "gap_tolerance": 0,
+      "timeout_seconds": 30,
+      "init_concurrency": 1
+    },
+    "files": [
+      {
+        "step_hours": 3,
+        "path": "/tmp/ifs-0p1-speed-5p_me90u/output/ifs-hres-0p1/20261020/12z/f003.subset.grib2",
+        "size_bytes": 60133161,
+        "sha256": "283e74ad6151d79b705a4a5a2b6a053137ffeefab7a3cc774788795a9234243c",
+        "records_selected": 30,
+        "records_total": 191,
+        "http_requests": 21,
+        "savings_pct": 87.18,
+        "selected_breakdown": {
+          "wind_100m": 2,
+          "wind_10m": 2,
+          "wind_gust_10m": 1,
+          "pl_850": 6,
+          "temp_2m": 1,
+          "temp_skin": 1,
+          "temp_minmax_3h": 2,
+          "humidity_2m": 1,
+          "pressure_sfc": 1,
+          "pressure_msl": 1,
+          "radiation_surface": 5,
+          "cloud_total": 1,
+          "precip": 4,
+          "tcwv_column": 1,
+          "cape": 1
+        }
+      }
+    ],
+    "failures": []
+  }
+}

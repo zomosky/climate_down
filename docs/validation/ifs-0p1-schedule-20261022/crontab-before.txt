@@ -1,0 +1,95 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  climate_pipeline 数据生产调度(宿主机 crontab → docker exec zhangmy-dev)
+#  时间全为 UTC。下载→切片(restore)→冷存(coldmove)三段;切片每10min幂等扫,
+#  只处理新出现的 manifest / 帧,故下载与切片无需精确对齐。
+#  脚本均在 /home/zhangmingyu/operation/,日志同目录 logs/(hima 另见 /var/log)。
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ 卫星观测 himawari(PAR/CLP/ARP)—— 日库(YYYYMMDD)· 每10分钟一帧(144/天)  │
+# └─────────────────────────────────────────────────────────────────────────┘
+# 实时:每10min 下新帧 + 就地增量写入当天日库 zarr(缺帧NaN、延时帧就地补)
+*/10 * * * * /bin/bash /home/zhangmingyu/operation/hima-realtime.sh
+
+# 日度回顾:每天04:30 幂等重扫最近5天日库(数据没变则跳过;吸收JAXA迟到帧/订正、治愈坏库)
+30 4 * * * REBUILD_DAYS=5 LOG=/home/zhangmingyu/operation/logs/hima-rebuild.log /bin/bash /home/zhangmingyu/operation/hima-rebuild-recent.sh >> /home/zhangmingyu/operation/logs/hima-rebuild.cron.log 2>&1
+
+# 冷存:每月2号06:00 把 nc 源挪 /save_data 冷备(保留完整上月+当月;zarr 留热盘)
+0 6 2 * * /bin/bash /home/zhangmingyu/operation/hima-coldmove.sh
+
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ 数值预报下载(download_run.sh:HOST算最新已发布init,--date显式传;每源两遍)  │
+# │   两遍语义:首遍带 LOOKBACK_DAYS=2 重验近2天(自愈);次遍补当日晚发布的         │
+# └─────────────────────────────────────────────────────────────────────────┘
+# gfs-0p25(NOAA,cycle默认12)
+00 2 * * * LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
+00 4 * * *                 /home/zhangmingyu/operation/download_run.sh config/jobs/gfs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_gfs.log 2>&1
+
+# aifs-single(ECMWF AI,发布lag~6h)
+00 2 * * * PUBLISH_LAG_HOURS=6 LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/aifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_aifs.log 2>&1
+00 4 * * * PUBLISH_LAG_HOURS=6                 /home/zhangmingyu/operation/download_run.sh config/jobs/aifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_aifs.log 2>&1
+
+# dwd-icon(DWD ICON global)
+30 2 * * * /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
+30 4 * * * /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon.log 2>&1
+05 11 * * * CYCLE=0 PUBLISH_LAG_HOURS=3 /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon_00z.log 2>&1
+# [2026-08-06] 补尾改 13:30+15:30:原 12:30 火时主趟(11:05 起,今实测跑到 12:47)还持锁被 flock 跳过,且尾步(177/180)发布晚于 12:30(今实测 04:47-07:29 UTC 间)
+30 13 * * * CYCLE=0 PUBLISH_LAG_HOURS=3                 /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon_00z.log 2>&1
+30 15 * * * CYCLE=0 PUBLISH_LAG_HOURS=3                 /home/zhangmingyu/operation/download_run.sh config/jobs/dwd-icon_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_icon_00z.log 2>&1
+
+# ifs-hres(ECMWF,cycle12,发布lag~10h → 放晚一点)
+00 4 * * * CYCLE=12 PUBLISH_LAG_HOURS=8 LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs.log 2>&1
+30 5 * * * CYCLE=12 PUBLISH_LAG_HOURS=8                 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs.log 2>&1
+00 7 * * * CYCLE=12 PUBLISH_LAG_HOURS=10                 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs.log 2>&1
+05 16 * * * CYCLE=0 PUBLISH_LAG_HOURS=8 LOOKBACK_DAYS=2 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_00z.log 2>&1
+30 17 * * * CYCLE=0 PUBLISH_LAG_HOURS=8                 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_00z.log 2>&1
+
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ 数值预报切片 restore(每10min 幂等 scan-once:新 manifest → 中国区 Zarr)     │
+# └─────────────────────────────────────────────────────────────────────────┘
+*/10 * * * * SOURCE=gfs-0p25                                                                                              /bin/bash /home/zhangmingyu/operation/restore_scan.sh >> /home/zhangmingyu/operation/logs/restore_scan_gfs.log 2>&1
+*/10 * * * * SOURCE=aifs-single JOB=config/jobs/aifs_zarr_china.yaml LOCK=/home/zhangmingyu/operation/lock/restore_scan_aifs.lock /bin/bash /home/zhangmingyu/operation/restore_scan.sh >> /home/zhangmingyu/operation/logs/restore_scan_aifs.log 2>&1
+*/10 * * * * SOURCE=ifs-hres    JOB=config/jobs/ifs_zarr_china.yaml  LOCK=/home/zhangmingyu/operation/lock/restore_scan_ifs.lock  /bin/bash /home/zhangmingyu/operation/restore_scan.sh >> /home/zhangmingyu/operation/logs/restore_scan_ifs.log 2>&1
+*/10 * * * * SOURCE=dwd-icon    JOB=config/jobs/icon_zarr_china.yaml LOCK=/home/zhangmingyu/operation/lock/restore_scan_icon.lock /bin/bash /home/zhangmingyu/operation/restore_scan.sh >> /home/zhangmingyu/operation/logs/restore_scan_icon.log 2>&1
+
+
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ 预报冷存 + 备份                                                            │
+# └─────────────────────────────────────────────────────────────────────────┘
+# 预报原始 GRIB 冷存:每月3号06:00,留30天,超期挪 /save_data
+0 7 * * * /bin/bash /home/zhangmingyu/operation/forecast-coldmove.sh
+
+# 每周日05:00 备份 crontab + operation 脚本
+0 5 * * 0 /bin/bash /home/zhangmingyu/operation/crontab-backup.sh
+# himawari 密集回补日窗化(2026-08-10 对调):下载只在 BJT 06:00-21:00,夜里链路整段让给 ifs 回补
+
+# ERA5 monthly sync + ERA5T refresh; account admission guard; first month 202608
+3-59/10 * * * * /bin/bash /home/zhangmingyu/operation/era5-production.sh >> /home/zhangmingyu/operation/logs/era5-sync.log 2>&1
+
+
+# Himawari historical monthly backfill from 202508; lock makes daily relaunch idempotent.
+
+# User-level operation log rotation; size-based, compressed, keeps four archives.
+15 5 * * * /usr/sbin/logrotate -s /home/zhangmingyu/operation/logrotate.state /home/zhangmingyu/operation/logrotate.conf >> /home/zhangmingyu/operation/logs/logrotate.log 2>&1
+
+# BEGIN ENS_PROBABILITIES_20261016
+# Asia/Shanghai host time: 05:15 gets previous UTC date 12z; 17:15 gets today 00z.
+15 5 * * * /usr/bin/python3 /home/zhangmingyu/operation/probabilities_run.py --cycle 12 >> /home/zhangmingyu/operation/logs/ens-probabilities-12z.log 2>&1
+15 17 * * * /usr/bin/python3 /home/zhangmingyu/operation/probabilities_run.py --cycle 0 >> /home/zhangmingyu/operation/logs/ens-probabilities-00z.log 2>&1
+# END ENS_PROBABILITIES_20261016
+
+# BEGIN PROBABILITY_HISTORY_BACKFILL_20261016
+# One-off history queue: resumes interrupted work; singleton lock; exits immediately once verified complete.
+*/10 * * * * /usr/bin/python3 /home/zhangmingyu/operation/releases/probability-history-20261016/probability_history_run.py --queue /home/zhangmingyu/operation/releases/probability-history-20261016/queue.json >> /home/zhangmingyu/operation/logs/probability-history-backfill-20261016.log 2>&1
+# END PROBABILITY_HISTORY_BACKFILL_20261016
+
+# BEGIN IFS-0P1 Google
+5 6 * * * CYCLE=12 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_12z.log 2>&1
+35 7 * * * CYCLE=12 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_12z.log 2>&1
+5 18 * * * CYCLE=0 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_00z.log 2>&1
+35 19 * * * CYCLE=0 PUBLISH_LAG_HOURS=10 LOOKBACK_DAYS=0 /home/zhangmingyu/operation/download_run.sh config/jobs/ifs_0p1_renewables_ser.yaml >> /home/zhangmingyu/operation/logs/download_ifs_0p1_00z.log 2>&1
+*/10 * * * * /usr/bin/python3 /home/zhangmingyu/operation/restore_ifs_0p1.py >> /home/zhangmingyu/operation/logs/restore_ifs_0p1.log 2>&1
+# END IFS-0P1 Google

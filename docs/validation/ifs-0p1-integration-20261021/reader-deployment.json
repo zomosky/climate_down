@@ -1,0 +1,18 @@
+{
+  "phase": "reader",
+  "receipt": [
+    {
+      "path": "/home/zhangmingyu/src/climate_pipeline/climate_zrread/src/climate_zrread/profiles/ifs_0p1.py",
+      "before_sha256": null,
+      "after_sha256": "b39caaee4098e273e23658c28fb41de1f6a981c9a855d641c801ced60f4f3806",
+      "changed": true
+    },
+    {
+      "path": "/home/zhangmingyu/src/climate_pipeline/climate_zrread/src/climate_zrread/profiles/__init__.py",
+      "before_sha256": "abf6bef5e262c2ffe1625b717b35de1241b6fcb2a7433ff8a72d14db19bab17a",
+      "after_sha256": "1a28cff802e6af9d4a96e3d63709c6390e254e5c995109dead272ccf63677c76",
+      "changed": true
+    }
+  ],
+  "receipt_path": "/home/zhangmingyu/operation/releases/ifs-0p1-20261021/reader-deployment.json"
+}

@@ -1,0 +1,21 @@
+{
+  "shortName": "2t",
+  "paramId": 167,
+  "gridType": "regular_ll",
+  "Ni": 3600,
+  "Nj": 1801,
+  "iDirectionIncrementInDegrees": 0.1,
+  "jDirectionIncrementInDegrees": 0.1,
+  "numberOfDataPoints": 6483600,
+  "packingType": "grid_ccsds",
+  "bitsPerValue": 9,
+  "stepType": "instant",
+  "startStep": 3,
+  "endStep": 3,
+  "fully_decoded": true,
+  "finite_count": 6483600,
+  "minimum": 218.76991271972656,
+  "maximum": 315.01991271972656,
+  "bytes": 1374711,
+  "sha256": "e10553a7acd9b5c9af75d80e88b496a65d353ef7d611a48f3261d4ae86538507"
+}

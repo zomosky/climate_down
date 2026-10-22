@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-22T01:22:43.458775+00:00",
+  "credential_file_exists": true,
+  "data_download_requested": false,
+  "authentication": {
+    "http_status": 200,
+    "authenticated": true
+  },
+  "service_info": {
+    "http_status": 403,
+    "error": "User '[redacted]' has no access to services/mars"
+  },
+  "list_request": {
+    "request": "list,class=od,stream=oper,type=fc,expver=1,date=20261014,time=12,step=0,levtype=sfc,param=167.128,output=cost,",
+    "http_status": 403,
+    "states": [
+      null
+    ],
+    "error": "User '[redacted]' has no access to services/mars",
+    "messages": []
+  },
+  "status": "mars_list_not_authorized_or_failed"
+}

@@ -1,0 +1,369 @@
+{
+  "parts": [
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-0h-oper-fc-sfc.grib2",
+      "bytes": 27224673,
+      "ranges": 14,
+      "seconds": 22.415483
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-0h-oper-fc-pl.grib2",
+      "bytes": 13420784,
+      "ranges": 6,
+      "seconds": 11.856097
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-3h-oper-fc-sfc.grib2",
+      "bytes": 46628329,
+      "ranges": 15,
+      "seconds": 38.737203
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-3h-oper-fc-pl.grib2",
+      "bytes": 13504832,
+      "ranges": 6,
+      "seconds": 11.602376
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-6h-oper-fc-sfc.grib2",
+      "bytes": 47754926,
+      "ranges": 16,
+      "seconds": 40.440841
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-6h-oper-fc-pl.grib2",
+      "bytes": 13548199,
+      "ranges": 5,
+      "seconds": 12.201543
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-9h-oper-fc-sfc.grib2",
+      "bytes": 48732672,
+      "ranges": 18,
+      "seconds": 41.813601
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-9h-oper-fc-pl.grib2",
+      "bytes": 12984746,
+      "ranges": 6,
+      "seconds": 11.082062
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-12h-oper-fc-sfc.grib2",
+      "bytes": 49561101,
+      "ranges": 15,
+      "seconds": 66.90464
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-12h-oper-fc-pl.grib2",
+      "bytes": 13464058,
+      "ranges": 6,
+      "seconds": 22.168503
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-15h-oper-fc-sfc.grib2",
+      "bytes": 49823414,
+      "ranges": 12,
+      "seconds": 109.65474
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-15h-oper-fc-pl.grib2",
+      "bytes": 13443980,
+      "ranges": 5,
+      "seconds": 36.641983
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-18h-oper-fc-sfc.grib2",
+      "bytes": 50990049,
+      "ranges": 15,
+      "seconds": 90.049392
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-18h-oper-fc-pl.grib2",
+      "bytes": 13432968,
+      "ranges": 6,
+      "seconds": 22.28194
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-21h-oper-fc-sfc.grib2",
+      "bytes": 50662890,
+      "ranges": 15,
+      "seconds": 87.694069
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-21h-oper-fc-pl.grib2",
+      "bytes": 13485408,
+      "ranges": 6,
+      "seconds": 23.981304
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-24h-oper-fc-sfc.grib2",
+      "bytes": 50729263,
+      "ranges": 15,
+      "seconds": 83.506517
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-24h-oper-fc-pl.grib2",
+      "bytes": 13526437,
+      "ranges": 6,
+      "seconds": 23.418888
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-27h-oper-fc-sfc.grib2",
+      "bytes": 49490075,
+      "ranges": 14,
+      "seconds": 85.090041
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-27h-oper-fc-pl.grib2",
+      "bytes": 13565839,
+      "ranges": 5,
+      "seconds": 35.041707
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-30h-oper-fc-sfc.grib2",
+      "bytes": 50771156,
+      "ranges": 15,
+      "seconds": 134.128244
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-30h-oper-fc-pl.grib2",
+      "bytes": 12985116,
+      "ranges": 6,
+      "seconds": 22.754523
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-33h-oper-fc-sfc.grib2",
+      "bytes": 50701497,
+      "ranges": 13,
+      "seconds": 86.736835
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-33h-oper-fc-pl.grib2",
+      "bytes": 12945351,
+      "ranges": 5,
+      "seconds": 32.022095
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-36h-oper-fc-sfc.grib2",
+      "bytes": 50092517,
+      "ranges": 16,
+      "seconds": 84.967249
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-36h-oper-fc-pl.grib2",
+      "bytes": 13441883,
+      "ranges": 6,
+      "seconds": 23.201879
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-39h-oper-fc-sfc.grib2",
+      "bytes": 51185212,
+      "ranges": 13,
+      "seconds": 68.442176
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-39h-oper-fc-pl.grib2",
+      "bytes": 13408101,
+      "ranges": 6,
+      "seconds": 21.516774
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-42h-oper-fc-sfc.grib2",
+      "bytes": 51083494,
+      "ranges": 16,
+      "seconds": 80.841305
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-42h-oper-fc-pl.grib2",
+      "bytes": 13440150,
+      "ranges": 6,
+      "seconds": 21.361205
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-45h-oper-fc-sfc.grib2",
+      "bytes": 50925793,
+      "ranges": 13,
+      "seconds": 104.974724
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-45h-oper-fc-pl.grib2",
+      "bytes": 13503259,
+      "ranges": 6,
+      "seconds": 22.581655
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-48h-oper-fc-sfc.grib2",
+      "bytes": 51383631,
+      "ranges": 14,
+      "seconds": 75.307374
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-48h-oper-fc-pl.grib2",
+      "bytes": 13020114,
+      "ranges": 6,
+      "seconds": 21.945172
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-51h-oper-fc-sfc.grib2",
+      "bytes": 48686906,
+      "ranges": 14,
+      "seconds": 72.677026
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-51h-oper-fc-pl.grib2",
+      "bytes": 13095899,
+      "ranges": 5,
+      "seconds": 31.586403
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-54h-oper-fc-sfc.grib2",
+      "bytes": 48239530,
+      "ranges": 16,
+      "seconds": 71.243701
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-54h-oper-fc-pl.grib2",
+      "bytes": 13080712,
+      "ranges": 6,
+      "seconds": 29.339713
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-57h-oper-fc-sfc.grib2",
+      "bytes": 48377352,
+      "ranges": 13,
+      "seconds": 73.103223
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-57h-oper-fc-pl.grib2",
+      "bytes": 13039672,
+      "ranges": 6,
+      "seconds": 24.335028
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-60h-oper-fc-sfc.grib2",
+      "bytes": 48472144,
+      "ranges": 13,
+      "seconds": 75.624523
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-60h-oper-fc-pl.grib2",
+      "bytes": 12986650,
+      "ranges": 6,
+      "seconds": 51.983491
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-63h-oper-fc-sfc.grib2",
+      "bytes": 48513314,
+      "ranges": 13,
+      "seconds": 70.758105
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-63h-oper-fc-pl.grib2",
+      "bytes": 13528236,
+      "ranges": 5,
+      "seconds": 32.933643
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-66h-oper-fc-sfc.grib2",
+      "bytes": 48771108,
+      "ranges": 14,
+      "seconds": 62.793083
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-66h-oper-fc-pl.grib2",
+      "bytes": 13419853,
+      "ranges": 5,
+      "seconds": 11.350161
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-69h-oper-fc-sfc.grib2",
+      "bytes": 49059890,
+      "ranges": 12,
+      "seconds": 40.478991
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-69h-oper-fc-pl.grib2",
+      "bytes": 13521745,
+      "ranges": 6,
+      "seconds": 11.430288
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-72h-oper-fc-sfc.grib2",
+      "bytes": 50737433,
+      "ranges": 15,
+      "seconds": 41.893168
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-72h-oper-fc-pl.grib2",
+      "bytes": 13019732,
+      "ranges": 6,
+      "seconds": 11.020743
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-75h-oper-fc-sfc.grib2",
+      "bytes": 51024624,
+      "ranges": 14,
+      "seconds": 42.048293
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-75h-oper-fc-pl.grib2",
+      "bytes": 13074652,
+      "ranges": 5,
+      "seconds": 11.110549
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-78h-oper-fc-sfc.grib2",
+      "bytes": 51233372,
+      "ranges": 15,
+      "seconds": 42.321205
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-78h-oper-fc-pl.grib2",
+      "bytes": 13088844,
+      "ranges": 6,
+      "seconds": 11.158807
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-81h-oper-fc-sfc.grib2",
+      "bytes": 51341400,
+      "ranges": 14,
+      "seconds": 42.305558
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-81h-oper-fc-pl.grib2",
+      "bytes": 13602918,
+      "ranges": 6,
+      "seconds": 12.062043
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-84h-oper-fc-sfc.grib2",
+      "bytes": 51368393,
+      "ranges": 13,
+      "seconds": 42.415213
+    },
+    {
+      "url": "https://storage.googleapis.com/ecmwf-open-data/20261020/12z/ifs/0p1/oper/20261020120000-84h-oper-fc-pl.grib2",
+      "bytes": 12991431,
+      "ranges": 6,
+      "seconds": 11.082219
+    }
+  ],
+  "summary": {
+    "sfc": {
+      "completed_parts": 29,
+      "median_s": 71.24,
+      "min_s": 22.42,
+      "max_s": 134.13,
+      "mean_MiB": 46.81
+    },
+    "pl": {
+      "completed_parts": 29,
+      "median_s": 22.17,
+      "min_s": 11.02,
+      "max_s": 51.98,
+      "mean_MiB": 12.68
+    }
+  },
+  "warnings_errors": []
+}
