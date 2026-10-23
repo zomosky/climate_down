@@ -29,6 +29,12 @@ viz = [
 s2s = [
     "cdsapi>=0.7.5",
 ]
+cams = [
+    "ecmwf-datastores-client>=0.4.1",
+    "eccodes>=2.46.0",
+    "eccodeslib>=2.46.2.19",
+    "numpy>=2.4.4",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.0,<0.12.0"]

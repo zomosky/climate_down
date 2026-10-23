@@ -264,6 +264,12 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+cams = [
+    { name = "eccodes" },
+    { name = "eccodeslib" },
+    { name = "ecmwf-datastores-client" },
+    { name = "numpy" },
+]
 s2s = [
     { name = "cdsapi" },
 ]
@@ -286,9 +292,13 @@ dev = [
 requires-dist = [
     { name = "cdsapi", marker = "extra == 's2s'", specifier = ">=0.7.5" },
     { name = "cfgrib", marker = "extra == 'viz'", specifier = ">=0.9.15.1" },
+    { name = "eccodes", marker = "extra == 'cams'", specifier = ">=2.46.0" },
+    { name = "eccodeslib", marker = "extra == 'cams'", specifier = ">=2.46.2.19" },
     { name = "eccodeslib", marker = "extra == 'viz'", specifier = ">=2.46.2.19" },
+    { name = "ecmwf-datastores-client", marker = "extra == 'cams'", specifier = ">=0.4.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.10.9" },
+    { name = "numpy", marker = "extra == 'cams'", specifier = ">=2.4.4" },
     { name = "numpy", marker = "extra == 'viz'", specifier = ">=2.4.4" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
@@ -297,7 +307,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.3" },
     { name = "xarray", marker = "extra == 'viz'", specifier = ">=2026.4.0" },
 ]
-provides-extras = ["viz", "s2s"]
+provides-extras = ["viz", "s2s", "cams"]
 
 [package.metadata.requires-dev]
 dev = [

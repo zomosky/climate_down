@@ -68,3 +68,8 @@ secrets.json
 PROJECT.md
 logs/
 CLAUDE.md
+
+# Local validation outputs and scratch files
+/docs/validation/
+/artifacts/
+/tmp/

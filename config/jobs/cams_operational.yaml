@@ -1,0 +1,16 @@
+# 241 production. Credentials are existing files, never values in this config.
+# Source/area/52 variables/native leads are fixed in cams/catalogue.py.
+output_dir: /climate_data
+accounts:
+  - name: zmy
+    credential_file: /workspace/era5-download/.cdsapirc_zmy
+  - name: zhangzomo
+    credential_file: /workspace/era5-download/.cdsapirc_zhangzomo
+cycle_accounts: {0: zmy, 12: zhangzomo}
+first_init: "2026102100"
+lookback_days: 1
+publish_lag_hours: 10
+poll_seconds: 30
+max_run_seconds: 2400
+transfer_seconds: 240
+max_asset_bytes: 1073741824

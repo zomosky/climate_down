@@ -201,7 +201,56 @@ def build_parser() -> argparse.ArgumentParser:
     _add_progress_flags(p_s2s)
     p_s2s.set_defaults(func=cmd_s2s)
 
+    p_cams = sub.add_parser("cams", help="CAMS ADS: complete 52-variable native 0–120h init")
+    p_cams.add_argument("--config", required=True, type=Path)
+    p_cams.add_argument("--date", help="one YYYYMMDD init date; no range expansion")
+    p_cams.add_argument("--cycle", required=True, type=int, choices=(0, 12))
+    p_cams.add_argument("--scheduled", action="store_true", help="bounded recent inits after first_init")
+    p_cams.add_argument("--preflight-only", action="store_true", help="read-only policy/constraints/cost checks")
+    p_cams.add_argument("--once", action="store_true", help="one poll/transfer pass, then let cron resume")
+    p_cams.set_defaults(func=cmd_cams)
+
     return parser
+
+
+def cmd_cams(args: argparse.Namespace) -> int:
+    import datetime as dt
+    import json
+
+    from climate_download.cams.catalogue import GROUPS, request_for
+    from climate_download.cams.client import create_client, preflight
+    from climate_download.cams.config import load_config
+    from climate_download.cams.state import safe_error
+    from climate_download.cams.worker import run_init, scheduled_inits
+
+    secret = ""
+    try:
+        cfg = load_config(args.config)
+        if args.once:
+            cfg.max_run_seconds = 0
+        if bool(args.date) == bool(args.scheduled):
+            raise ValueError("Choose one --date or --scheduled")
+        keys = scheduled_inits(cfg, args.cycle, dt.datetime.now(dt.UTC)) if args.scheduled else [f"{args.date}{args.cycle:02d}"]
+        if args.preflight_only:
+            client, secret = create_client(cfg.account_for(args.cycle))
+            rows = []
+            for key in keys:
+                if key < cfg.first_init:
+                    raise ValueError("Init predates the production floor")
+                for group in GROUPS:
+                    rows.append({"init": key, "group": group,
+                                 **preflight(client, request_for(key[:8], args.cycle, group), group)})
+            print(json.dumps({"mode": "read_only", "checks": rows}, ensure_ascii=False))
+            return 0
+        for key in keys:
+            row = run_init(cfg, key[:8], args.cycle)
+            print(json.dumps(row, ensure_ascii=False), flush=True)
+            if row["status"] != "complete":
+                break
+        return 0
+    except Exception as error:
+        print(json.dumps({"status": "failed", "error": safe_error(error, secret)}, ensure_ascii=False), file=sys.stderr)
+        return 1
 
 
 def cmd_run(args: argparse.Namespace) -> int:

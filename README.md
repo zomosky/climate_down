@@ -1026,3 +1026,7 @@ print(outcome.succeeded, outcome.failed, outcome.report_path)
 - [ ] `manifest.py` / `config.py` 单元测试覆盖
 - [ ] 绘图脚本参数化变量名（自动适配 AIFS / GFS shortName）
 - [ ] 历史回填重型版（SQLite 任务表 + 断点续传 + 失败幂等重试）
+
+## CAMS 正式接入
+
+`ec_cams` 使用独立 `climate_download cams` ADS 子命令，每起报完整保留52变量、0–120小时原生时效，完整校验后发布标准manifest。变量表、断点恢复、241定时入口及验收说明见 [CAMS.md](docs/CAMS.md)。当前生产下限为2026102100，仅近期运行，不启动全年历史回补。
