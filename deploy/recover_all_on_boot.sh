@@ -60,7 +60,9 @@ run_step "remaining NWP recent-init reconciliation" \
   "$PYTHON_BIN" "$OPERATION_DIR/reconcile_sources.py" --exclude-source dwd-icon
 
 run_step "Himawari recent-day rebuild" \
-  env REBUILD_DAYS="${REBUILD_DAYS:-5}" /bin/bash "$OPERATION_DIR/hima-rebuild-recent.sh"
+  env REBUILD_DAYS="${REBUILD_DAYS:-5}" \
+  LOG="${HIMA_REBUILD_LOG:-$OPERATION_DIR/logs/hima-rebuild.log}" \
+  /bin/bash "$OPERATION_DIR/hima-rebuild-recent.sh"
 
 run_step "GFS restore scan" \
   env SOURCE=gfs-0p25 /bin/bash "$OPERATION_DIR/restore_scan.sh"

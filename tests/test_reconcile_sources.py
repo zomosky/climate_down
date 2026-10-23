@@ -213,7 +213,7 @@ def test_boot_recovery_prioritizes_dwd_then_checks_every_pipeline_stage(tmp_path
         hook = operation / name
         hook.write_text(
             "#!/bin/sh\n"
-            'printf "%s|%s\\n" "$(basename "$0")" "${SOURCE:-}" >> "$CALLS"\n'
+            'printf "%s|%s|%s\\n" "$(basename "$0")" "${SOURCE:-}" "${LOG:-}" >> "$CALLS"\n'
         )
         hook.chmod(0o755)
     env = os.environ.copy()
@@ -234,16 +234,18 @@ def test_boot_recovery_prioritizes_dwd_then_checks_every_pipeline_stage(tmp_path
     assert result.returncode == 0
     lines = calls.read_text().splitlines()
     assert lines[0].endswith("--only-source dwd-icon")
-    assert lines[1] == "hima-realtime.sh|"
+    assert lines[1] == "hima-realtime.sh||"
     assert lines[2].endswith("--exclude-source dwd-icon")
-    assert lines[3] == "hima-rebuild-recent.sh|"
+    assert lines[3] == (
+        f"hima-rebuild-recent.sh||{operation / 'logs' / 'hima-rebuild.log'}"
+    )
     assert lines[4:8] == [
-        "restore_scan.sh|gfs-0p25",
-        "restore_scan.sh|aifs-single",
-        "restore_scan.sh|ifs-hres",
-        "restore_scan.sh|dwd-icon",
+        "restore_scan.sh|gfs-0p25|",
+        "restore_scan.sh|aifs-single|",
+        "restore_scan.sh|ifs-hres|",
+        "restore_scan.sh|dwd-icon|",
     ]
-    assert lines[8] == "era5-production.sh|"
+    assert lines[8] == "era5-production.sh||"
 
 
 def test_persistent_timer_uses_calendar_schedule_that_can_replay_missed_runs():

@@ -167,6 +167,11 @@ timer because a kernel-level storage wait could otherwise pin the recovery lock.
 Healthy inits are local no-ops: no upstream request, manifest rewrite, or repeat
 Zarr build.
 
+The boot wrapper passes `LOG=$OPERATION_DIR/logs/hima-rebuild.log` to the
+Himawari recent-day rebuild. Keep the daily rebuild cron on the same writable
+operation log directory; the service runs as `zhangmingyu` and must not depend
+on a pre-existing root-owned `/var/log/hima-rebuild.log` after a reboot.
+
 Coverage is deliberately product-specific:
 
 | source | cycles | expected steps | recent window |
