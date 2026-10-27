@@ -1029,4 +1029,4 @@ print(outcome.succeeded, outcome.failed, outcome.report_path)
 
 ## CAMS 正式接入
 
-`ec_cams` 使用独立 `climate_download cams` ADS 子命令，每起报完整保留52变量、0–120小时原生时效，完整校验后发布标准manifest。变量表、断点恢复、241定时入口及验收说明见 [CAMS.md](docs/CAMS.md)。当前生产下限为2026102100，仅近期运行，不启动全年历史回补。
+`ec_cams` 使用独立 `climate_download cams` ADS 子命令，每起报完整保留52变量、0–120小时原生时效，完整校验后发布标准manifest。变量表、断点恢复、241定时入口及验收说明见 [CAMS.md](docs/CAMS.md)。实时生产下限为2026102100；另有按授权范围独立运行的历史队列，2026-10-27确认按周向前回补至2026年1月1日，实时任务优先，每周完整验收后再进入前一周。

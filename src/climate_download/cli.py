@@ -221,7 +221,7 @@ def cmd_cams(args: argparse.Namespace) -> int:
     from climate_download.cams.client import create_client, preflight
     from climate_download.cams.config import load_config
     from climate_download.cams.state import safe_error
-    from climate_download.cams.worker import run_init, scheduled_inits
+    from climate_download.cams.worker import BlockedRequestError, run_init, scheduled_inits
 
     secret = ""
     try:
@@ -242,12 +242,22 @@ def cmd_cams(args: argparse.Namespace) -> int:
                                  **preflight(client, request_for(key[:8], args.cycle, group), group)})
             print(json.dumps({"mode": "read_only", "checks": rows}, ensure_ascii=False))
             return 0
+        blocked = False
         for key in keys:
-            row = run_init(cfg, key[:8], args.cycle)
+            try:
+                row = run_init(cfg, key[:8], args.cycle)
+            except BlockedRequestError as error:
+                if not args.scheduled:
+                    raise
+                blocked = True
+                row = {"status": "blocked", "date": key[:8], "cycle": args.cycle,
+                       "error": safe_error(error, secret)}
+                print(json.dumps(row, ensure_ascii=False), flush=True)
+                continue
             print(json.dumps(row, ensure_ascii=False), flush=True)
             if row["status"] != "complete":
                 break
-        return 0
+        return 1 if blocked else 0
     except Exception as error:
         print(json.dumps({"status": "failed", "error": safe_error(error, secret)}, ensure_ascii=False), file=sys.stderr)
         return 1

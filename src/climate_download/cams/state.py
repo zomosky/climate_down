@@ -36,7 +36,7 @@ def signature(value: object) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
-def safe_error(error: Exception, secret: str = "") -> dict:
+def safe_error(error: Exception, secret: str = "", *, max_chars: int | None = 1200) -> dict:
     message = str(error)
     if secret:
         message = message.replace(secret, "[REDACTED]")
@@ -45,4 +45,4 @@ def safe_error(error: Exception, secret: str = "") -> dict:
     # Also cover common auth fields if a transport exception embeds headers.
     message = re.sub(r"(?i)(authorization|api[-_]?key|token)([\s\"':=]+)[^\s,}]+",
                      r"\1\2[REDACTED]", message)
-    return {"type": type(error).__name__, "message": message[:1200]}
+    return {"type": type(error).__name__, "message": message if max_chars is None else message[:max_chars]}

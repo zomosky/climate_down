@@ -1,6 +1,7 @@
 """Durable, account-locked worker for exactly one full CAMS init at a time."""
 from __future__ import annotations
 
+import datetime as dt
 import fcntl
 import json
 from pathlib import Path
@@ -10,9 +11,36 @@ from climate_download.cams.catalogue import DATASET, GROUPS, SOURCE, request_for
 from climate_download.cams.client import PreflightRejected, create_client, preflight, transfer
 from climate_download.cams.config import CamsConfig
 from climate_download.cams.grib import publish, validate, verify_published
+from climate_download.cams import recovery
 from climate_download.cams.state import digest, now, safe_error, save, signature
 
 BLOCKED = {"submitting", "submission_uncertain", "remote_failed", "validation_failed", "preflight_rejected"}
+TERMINAL_FAILURES = {"remote_failed", "validation_failed", "preflight_rejected"}
+
+
+class BlockedRequestError(ValueError):
+    """A retained failure needs inspection, while other scheduled inits may run."""
+
+
+def _submit_once(folder, state, request, client, secret):
+    """The intent and retry count are durable before either kind of POST."""
+    state.update(phase='submitting', submission_started_at=now())
+    state.pop('request_id', None)
+    save(folder/'state.json', state)
+    try:
+        request_id = client.submit(DATASET, request).request_id
+        if not request_id:
+            raise ValueError('ADS did not return a request ID')
+        if any(attempt['request_id'] == request_id for attempt in state.get('previous_attempts', [])):
+            raise ValueError('ADS returned a previously failed request ID; inspect the submission')
+    except Exception as error:
+        state.update(phase='submission_uncertain', error=safe_error(error, secret))
+        save(folder/'state.json', state)
+        raise BlockedRequestError('ADS submit uncertain; inspect receipt and recover original ID') from None
+    state.update(request_id=request_id, phase='submitted', submitted_at=now())
+    for field in ('error', 'retry_due_at', 'retry_wait_reason', 'remote_status', 'server_timestamps'):
+        state.pop(field, None)
+    save(folder/'state.json', state)
 
 
 def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: str, client, secret: str) -> bool:
@@ -26,41 +54,48 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     if state["request_sha256"] != signature(request) or state["account"] != account or state["dataset"] != DATASET:
         raise ValueError("Pinned CAMS request/account differs; reconcile the existing job")
     if state["phase"] in BLOCKED:
-        raise ValueError(f"CAMS {state['phase']} requires inspection; automatic resubmission is forbidden")
+        raise BlockedRequestError(f"CAMS {state['phase']} requires inspection; automatic resubmission is forbidden")
     target, part = folder / "download.grib", folder / "download.grib.part"
     if state["phase"] == "complete":
         if not target.is_file() or digest(target) != state["sha256"]:
             raise ValueError("Completed raw CAMS group checksum mismatch")
         return True
-    if not state.get("request_id"):
+    retrying = False
+    if state['phase'] == 'retry_wait':
+        try:
+            decision = recovery.retry_decision(config, folder, state, request, client, secret)
+        except recovery.RecoveryBlocked as error:
+            state.update(phase='remote_failed', retry_blocked=safe_error(error, secret))
+            save(state_path, state)
+            raise BlockedRequestError('MARS retry requires inspection; original failure retained') from None
+        if decision is None:
+            return False
+        retrying = decision == 'retry'
+    if not state.get("request_id") or retrying:
         # Cost/licence/constraints checks may be retried. Once submitting is
         # persisted, every crash/exception is blocked until original-ID recovery.
+        if not retrying:
+            state.setdefault('mars_retry_policy', recovery.policy_for(config))
         try:
             state["preflight"] = preflight(client, request, group)
         except Exception as error:
             status = getattr(getattr(error, "response", None), "status_code", None)
             rejected = isinstance(error, PreflightRejected) or status in (400, 401, 403, 404, 422)
-            state.update(phase="preflight_rejected" if rejected else "preflight_deferred",
+            state.update(phase="preflight_rejected" if rejected else "retry_wait" if retrying else "preflight_deferred",
                          last_check=now(), error=safe_error(error, secret))
             save(state_path, state)
             if rejected:
-                raise ValueError("CAMS policy/cost preflight rejected; saved reason requires inspection") from None
+                raise BlockedRequestError("CAMS policy/cost preflight rejected; saved reason requires inspection") from None
             return False
-        save(folder / "request.json", request)
-        state.update(phase="submitting", submission_started_at=now())
-        save(state_path, state)
-        try:
-            remote = client.submit(DATASET, request)
-            request_id = remote.request_id
-            if not request_id:
-                raise ValueError("ADS did not return a request ID")
-        except Exception as error:
-            state.update(phase="submission_uncertain", error=safe_error(error, secret))
-            save(state_path, state)
-            raise ValueError("ADS submit uncertain; inspect receipt and recover original ID") from None
-        state.update(request_id=request_id, phase="submitted", submitted_at=now())
-        state.pop("error", None)
-        save(state_path, state)
+        if retrying:
+            state['retry_count'] = state.get('retry_count', 0) + 1
+            state.setdefault('previous_attempts', []).append({
+                'request_id': state['request_id'], 'phase': 'remote_failed',
+                'state_archive': str(folder/state['failed_attempt']['directory']/'state.json'),
+                'state_sha256': state['failed_attempt']['state_sha256']})
+        else:
+            save(folder / "request.json", request)
+        _submit_once(folder, state, request, client, secret)
     try:
         remote = client.get_remote(state["request_id"])
         reply = remote.json
@@ -71,19 +106,20 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
             state['phase'] = 'remote_failed'
         save(state_path, state)
         if inaccessible:
-            raise ValueError('Pinned ADS job is inaccessible; inspect the original ID/account before recovery') from None
+            raise BlockedRequestError('Pinned ADS job is inaccessible; inspect the original ID/account before recovery') from None
         return False
     status = reply["status"]
     state.update(last_check=now(), remote_status=status,
                  server_timestamps={k: reply.get(k) for k in ("created", "started", "finished", "updated")})
     if status in ("failed", "rejected", "dismissed", "deleted"):
-        state.update(phase="remote_failed")
+        failure = RuntimeError('ADS returned a terminal failure without extraction diagnostics')
         try:
             remote.get_results()
         except Exception as error:
-            state["error"] = safe_error(error, secret)
-        save(state_path, state)
-        raise ValueError("ADS job failed; saved sanitized reason, no resubmission")
+            failure = error
+        if recovery.record_failure(config, folder, state, request, reply, failure, secret):
+            return False
+        raise BlockedRequestError("ADS job failed; saved sanitized reason, no resubmission")
     if status != "successful":
         state.update(phase="waiting_for_remote")
         save(state_path, state)
@@ -112,7 +148,7 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     except Exception as error:
         state.update(phase="validation_failed", error=safe_error(error, secret))
         save(state_path, state)
-        raise ValueError("CAMS GRIB validation failed; raw bytes retained") from None
+        raise BlockedRequestError("CAMS GRIB validation failed; raw bytes retained") from None
     part.replace(target)
     state.update(phase="complete", completed_at=now(), sha256=digest(target),
                  bytes=target.stat().st_size, messages=validation["messages"])
@@ -181,11 +217,27 @@ def scheduled_inits(config: CamsConfig, cycle: int, at) -> list[str]:
     from climate_download.cams.config import candidate_inits
     keys = set(candidate_inits(config, cycle, at))
     source_dir = config.output_dir / SOURCE
+    # Explicit recovery receipts keep finite gaps eligible after the recent
+    # submission window moves on, without widening production into history.
+    for path in source_dir.glob(f"????????/{cycle:02d}z/cams.catchup.json"):
+        date = path.parents[1].name
+        key = f"{date}{cycle:02d}"
+        if key < config.first_init:
+            continue
+        receipt = json.loads(path.read_text())
+        if (receipt.get("date") != date or receipt.get("cycle") != cycle
+                or not receipt.get("authorized_at")):
+            raise ValueError("CAMS catchup receipt identity differs from its directory")
+        request_for(date, cycle, "hourly")
+        due = at.astimezone(dt.timezone.utc) - dt.timedelta(hours=config.publish_lag_hours)
+        if key <= due.strftime("%Y%m%d%H") and not (path.parent / f"{date}_{cycle:02d}z_{SOURCE}.manifest.json").is_file():
+            keys.add(key)
     for path in source_dir.glob(f"????????/{cycle:02d}z/.cams/*/state.json"):
         state = json.loads(path.read_text())
         product_folder = path.parents[2]
-        if state.get("request_id") and (state.get("phase") != "complete"
-                                       or not (product_folder / f"{state['date']}_{cycle:02d}z_{SOURCE}.manifest.json").is_file()):
+        has_intent = state.get('request_id') or state.get('phase') in ('submitting', 'submission_uncertain')
+        manifest = product_folder / f"{state['date']}_{cycle:02d}z_{SOURCE}.manifest.json"
+        if has_intent and (state.get('phase') != 'complete' or not manifest.is_file()):
             key = f"{state['date']}{cycle:02d}"
             if state.get("cycle") != cycle:
                 raise ValueError("Saved CAMS init is outside configured cycle ownership")
@@ -195,3 +247,17 @@ def scheduled_inits(config: CamsConfig, cycle: int, at) -> list[str]:
                 continue
             keys.add(key)
     return sorted(keys)
+
+
+def pending_inits(config: CamsConfig, cycle: int, at) -> list[str]:
+    """Live priority excludes terminal failures but retains uncertain submissions."""
+    pending = []
+    for key in scheduled_inits(config, cycle, at):
+        folder = config.output_dir / SOURCE / key[:8] / f"{cycle:02d}z"
+        if (folder / f"{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json").is_file():
+            continue
+        states = [json.loads(p.read_text()) for p in (folder / ".cams").glob("*/state.json")]
+        if any(s.get("phase") in TERMINAL_FAILURES for s in states):
+            continue
+        pending.append(key)
+    return pending

@@ -14,3 +14,6 @@ poll_seconds: 30
 max_run_seconds: 2400
 transfer_seconds: 240
 max_asset_bytes: 1073741824
+# New submissions only: one identical retry after a confirmed MARS -43 field-count error.
+mars_count_retry_limit: 1
+mars_count_retry_delay_seconds: 1800
