@@ -107,3 +107,17 @@ def request_for(date: str, cycle: int, group: str) -> dict:
     if group == "pressure850":
         request["pressure_level"] = ["850"]
     return request
+
+
+def request_variables(request: dict, date: str, cycle: int, group: str) -> tuple[Variable, ...]:
+    """Accept only an exact native subset; area/init/format/level cannot change."""
+    original = request_for(date, cycle, group)
+    axes = {'variable', 'leadtime_hour'}
+    if set(request) != set(original) or any(request[k] != original[k] for k in set(original)-axes):
+        raise ValueError('CAMS request differs from the fixed init/grid/format/level contract')
+    for key in axes:
+        values = request[key]
+        if (not isinstance(values, list) or not values or any(not isinstance(v, str) for v in values)
+                or len(values) != len(set(values)) or not set(values) <= set(original[key])):
+            raise ValueError('CAMS request is not a unique native variable/lead subset')
+    return tuple(v for v in GROUPS[group] if v.api_name in request['variable'])

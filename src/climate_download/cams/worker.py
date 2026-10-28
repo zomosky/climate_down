@@ -7,10 +7,11 @@ import json
 from pathlib import Path
 import time
 
-from climate_download.cams.catalogue import DATASET, GROUPS, SOURCE, request_for
+from climate_download.cams.catalogue import DATASET, GROUPS, SOURCE, request_for, request_variables
 from climate_download.cams.client import PreflightRejected, create_client, preflight, transfer
 from climate_download.cams.config import CamsConfig
 from climate_download.cams.grib import publish, validate, verify_published
+from climate_download.cams.ranges import RangeIdentityError
 from climate_download.cams import recovery
 from climate_download.cams.state import digest, now, safe_error, save, signature
 
@@ -20,6 +21,23 @@ TERMINAL_FAILURES = {"remote_failed", "validation_failed", "preflight_rejected"}
 
 class BlockedRequestError(ValueError):
     """A retained failure needs inspection, while other scheduled inits may run."""
+
+
+def newer_live_due(config: CamsConfig, key: str, cycle: int) -> str | None:
+    """Yield an older recovery between bounded transfers when live data is due."""
+    if getattr(config, 'hourly_request_mode', 'bundle') != 'native_constraint_cubes':
+        return None
+    from climate_download.cams.config import candidate_inits
+    candidates = candidate_inits(config, cycle, dt.datetime.now(dt.timezone.utc))
+    if not candidates or candidates[-1] <= key:
+        return None
+    latest = candidates[-1]
+    folder = config.output_dir/SOURCE/latest[:8]/f'{cycle:02d}z'
+    if (folder/f'{latest[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file():
+        return None
+    if any(json.loads(p.read_text()).get('phase') in BLOCKED for p in (folder/'.cams').glob('*/state.json')):
+        return None
+    return latest
 
 
 def _submit_once(folder, state, request, client, secret):
@@ -43,9 +61,12 @@ def _submit_once(folder, state, request, client, secret):
     save(folder/'state.json', state)
 
 
-def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: str, client, secret: str) -> bool:
+def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: str, client, secret: str,
+               *, request: dict | None = None) -> bool:
     account = config.account_for(cycle).name
-    request = request_for(date, cycle, group)
+    subset = request is not None
+    request = request_for(date, cycle, group) if request is None else request
+    variables = request_variables(request, date, cycle, group)
     folder.mkdir(parents=True, exist_ok=True)
     state_path = folder / "state.json"
     state = json.loads(state_path.read_text()) if state_path.exists() else {
@@ -72,6 +93,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
             return False
         retrying = decision == 'retry'
     if not state.get("request_id") or retrying:
+        if not retrying and recovery.has_raw_evidence(folder):
+            raise BlockedRequestError('Existing CAMS raw bytes have no pinned order; inspect them before submission')
         # Cost/licence/constraints checks may be retried. Once submitting is
         # persisted, every crash/exception is blocked until original-ID recovery.
         if not retrying:
@@ -130,6 +153,10 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     save(state_path, state)
     try:
         receipt, done = transfer(remote, part, config, expected_bytes=state.get("expected_bytes"))
+    except RangeIdentityError as error:
+        state.update(phase='validation_failed', last_transfer_check=now(), error=safe_error(error, secret))
+        save(state_path, state)
+        raise BlockedRequestError('CAMS range/object validation failed; original bytes retained') from None
     except Exception as error:
         state.update(last_transfer_check=now(), error=safe_error(error, secret))
         save(state_path, state)
@@ -143,7 +170,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     state.update(phase="validating", download_finished_at=now())
     save(state_path, state)
     try:
-        validation = validate([part], date, cycle, GROUPS[group])
+        options = {'native_leads': tuple(int(h) for h in request['leadtime_hour'])} if subset else {}
+        validation = validate([part], date, cycle, variables, **options)
         save(folder / "validation.json", validation)
     except Exception as error:
         state.update(phase="validation_failed", error=safe_error(error, secret))
@@ -183,11 +211,29 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
         began = time.monotonic()
         verified_groups = set()
         while True:
+            priority = newer_live_due(config, key, cycle)
+            if priority:
+                return {'status': 'yielded_to_realtime', 'date': date, 'cycle': cycle, 'priority_init': priority}
             pending = None
             for group in GROUPS:
                 if group in verified_groups:
                     continue
-                if not group_tick(config, folder / ".cams" / group, date, cycle, group, client, secret):
+                priority = newer_live_due(config, key, cycle)
+                if priority:
+                    return {'status': 'yielded_to_realtime', 'date': date, 'cycle': cycle,
+                            'priority_init': priority}
+                group_dir = folder / '.cams' / group
+                state_path = group_dir/'state.json'
+                existing = json.loads(state_path.read_text()) if state_path.is_file() else {}
+                use_partition = group == 'hourly' and (
+                    existing.get('partitioned_request') or (group_dir/'partition.json').is_file()
+                    or (getattr(config, 'hourly_request_mode', 'bundle') == 'native_constraint_cubes' and not existing))
+                if use_partition:
+                    from climate_download.cams.partition import tick
+                    complete = tick(config, group_dir, date, cycle, client, secret)
+                else:
+                    complete = group_tick(config, group_dir, date, cycle, group, client, secret)
+                if not complete:
                     pending = group
                     state = json.loads((folder / ".cams" / group / "state.json").read_text())
                     # Pulse the generic disk monitor only after a real poll
@@ -203,8 +249,15 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                     group_dir = folder / ".cams" / group
                     state = json.loads((group_dir / "state.json").read_text())
                     raw_paths.append(group_dir / "download.grib")
-                    requests.append({"group": group, "request_id": state["request_id"],
-                                     "account": state["account"], "request_sha256": state["request_sha256"]})
+                    if state.get('partitioned_request'):
+                        plan = json.loads((group_dir/'partition.json').read_text())
+                        for part in plan['parts']:
+                            child = json.loads((group_dir/'parts'/part['id']/'state.json').read_text())
+                            requests.append({'group': group, 'part': part['id'], 'request_id': child['request_id'],
+                                             'account': child['account'], 'request_sha256': child['request_sha256']})
+                    else:
+                        requests.append({"group": group, "request_id": state["request_id"],
+                                         "account": state["account"], "request_sha256": state["request_sha256"]})
                 manifest = publish(raw_paths, folder, date, cycle, requests)
                 return {"status": "complete", "date": date, "cycle": cycle, "manifest": str(manifest)}
             if time.monotonic() - began >= config.max_run_seconds:
@@ -235,7 +288,8 @@ def scheduled_inits(config: CamsConfig, cycle: int, at) -> list[str]:
     for path in source_dir.glob(f"????????/{cycle:02d}z/.cams/*/state.json"):
         state = json.loads(path.read_text())
         product_folder = path.parents[2]
-        has_intent = state.get('request_id') or state.get('phase') in ('submitting', 'submission_uncertain')
+        has_intent = (state.get('request_id') or state.get('partitioned_request')
+                      or state.get('phase') in ('submitting', 'submission_uncertain'))
         manifest = product_folder / f"{state['date']}_{cycle:02d}z_{SOURCE}.manifest.json"
         if has_intent and (state.get('phase') != 'complete' or not manifest.is_file()):
             key = f"{state['date']}{cycle:02d}"

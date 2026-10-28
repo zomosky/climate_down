@@ -81,9 +81,13 @@ def check_header(header: dict, date: str, cycle: int, variables: dict[int, Varia
 
 
 def validate(paths: Iterable[Path], date: str, cycle: int,
-             variables: tuple[Variable, ...] = VARIABLES, *, split_dir: Path | None = None) -> dict:
+             variables: tuple[Variable, ...] = VARIABLES, *, split_dir: Path | None = None,
+             native_leads: tuple[int, ...] | None = None) -> dict:
     by_param = {v.param_id: v for v in variables}
-    expected = {(v.param_id, h) for v in variables for h in v.leads}
+    if native_leads is not None and (not native_leads or len(native_leads) != len(set(native_leads))
+            or any(not set(native_leads) <= set(v.leads) for v in variables)):
+        raise ValueError('Invalid CAMS native subset leads')
+    expected = {(v.param_id, h) for v in variables for h in (v.leads if native_leads is None else native_leads)}
     seen, records, originals, handles, split_hashes = set(), [], [], {}, {}
     counts: Counter = Counter()
     try:
@@ -92,6 +96,8 @@ def validate(paths: Iterable[Path], date: str, cycle: int,
             raw_messages_hash = hashlib.sha256()
             for header, message in iter_messages(path):
                 p, h = check_header(header, date, cycle, by_param)
+                if (p, h) not in expected:
+                    raise ValueError(f'Unexpected CAMS piece parameter/native lead {(p, h)}')
                 if (p, h) in seen:
                     raise ValueError(f"Duplicate CAMS parameter/native lead {(p, h)}")
                 seen.add((p, h))
@@ -126,7 +132,8 @@ def validate(paths: Iterable[Path], date: str, cycle: int,
             "all_original_bytes_accounted_for": True, "originals": originals,
             "records": records, "messages_per_step": dict(sorted(counts.items())),
             "split_sha256": {str(h): s.hexdigest() for h, s in sorted(split_hashes.items())},
-            "native_samples": {str(v.param_id): len(v.leads) for v in variables}}
+            "native_samples": {str(v.param_id): len(v.leads if native_leads is None else native_leads)
+                               for v in variables}}
 
 
 def manifest_path(folder: Path, date: str, cycle: int) -> Path:

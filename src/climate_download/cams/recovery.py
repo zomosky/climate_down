@@ -14,6 +14,11 @@ class RecoveryBlocked(ValueError):
     """The failed request cannot safely be replaced automatically."""
 
 
+def has_raw_evidence(folder: Path) -> bool:
+    return any((folder/name).exists() for name in
+               ('download.grib', 'download.grib.part', 'download.grib.part.ranges'))
+
+
 def classify_mars_failure(error: Exception) -> dict | None:
     message = str(error)
     if not re.search(r'\bMarsRuntimeError\b|\bmars\s*-\s*(?:ERROR|FATAL)\b', message, re.I):
@@ -87,7 +92,7 @@ def record_failure(config, folder, state, request, reply, error, secret) -> bool
                                'failure_sha256': digest(archive/'failure.json')}
     eligible = (reply['status'] == 'failed' and diagnostic is not None and _allowed(config, state)
                 and request_verified and remote_verified
-                and not any((folder/name).exists() for name in ('download.grib', 'download.grib.part')))
+                and not has_raw_evidence(folder))
     if eligible:
         due = dt.datetime.fromisoformat(now()) + dt.timedelta(seconds=state['mars_retry_policy']['delay_seconds'])
         state.update(phase='retry_wait', retry_due_at=due.isoformat())
@@ -114,7 +119,7 @@ def retry_decision(config, folder, state, request, client, secret) -> str | None
         raise RecoveryBlocked('Original ADS request bytes changed')
     if signature(json.loads((archive/'request.json').read_text())) != signature(request):
         raise RecoveryBlocked('Original ADS request parameters changed')
-    if any((folder/name).exists() for name in ('download.grib', 'download.grib.part')):
+    if has_raw_evidence(folder):
         raise RecoveryBlocked('Existing raw bytes must continue using their original order')
     try:
         reply = client.get_remote(state['request_id']).json

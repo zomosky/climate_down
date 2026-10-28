@@ -90,7 +90,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
     if priority:
         return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
     # Separate historical floor; normal cron keeps its original configuration.
-    config = operational.model_copy(update={'first_init': plan['start']+'00', 'max_run_seconds': 0})
+    config = operational.model_copy(update={'first_init': plan['start']+'00', 'max_run_seconds': 0,
+                                             'hourly_request_mode': 'bundle'})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
     for key in week['inits']:

@@ -65,6 +65,27 @@ def combine(parts, expected):
     return result, partitions
 
 
+def request_directory(folder, request):
+    """Resolve literal order bytes; a partition is never a second group bundle."""
+    assert request['group'] in ('hourly', 'gust', 'pressure850')
+    group = folder/'.cams'/request['group']
+    if 'part' not in request:
+        return group
+    part = request['part']
+    assert request['group'] == 'hourly' and isinstance(part, str) and len(part) == 16
+    assert all(c in '0123456789abcdef' for c in part)
+    plan_path = group/'partition.json'
+    parent = json.loads((group/'state.json').read_text())
+    assert parent['partitioned_request'] and digest(plan_path) == parent['partition_sha256']
+    plan = json.loads(plan_path.read_text())
+    item = next(p for p in plan['parts'] if p['id'] == part)
+    payload = json.loads((group/'parts'/part/'request.json').read_text())
+    assert payload == item['request']
+    actual = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+    assert actual == request['request_sha256'] and part == actual[:16]
+    return group/'parts'/part
+
+
 def check_raw(date, cycle):
     import cfgrib
 
@@ -80,6 +101,9 @@ def check_raw(date, cycle):
         assert path.stat().st_size == item["size_bytes"] and digest(path) == item["sha256"]
     receipt = json.loads((folder / ".cams/raw_validation.json").read_text())
     assert receipt["passed"] and receipt["messages"] == 5732 and receipt["all_original_bytes_accounted_for"]
+    for original in receipt['originals']:
+        path = Path(original['path'])
+        assert path.stat().st_size == original['size_bytes'] and digest(path) == original['sha256']
     seen = {(r["param_id"], r["lead_hours"]) for r in receipt["records"]}
     expected = {(v["params"][0], h) for v in manifest["variables"] for h in v["native_step_hours"]}
     assert seen == expected and len(receipt["records"]) == len(seen) == 5732
@@ -89,7 +113,7 @@ def check_raw(date, cycle):
     split_hashes = {h: hashlib.sha256() for h in range(121)}
     position = 0
     for request in manifest["original_requests"]:
-        raw = folder / ".cams" / request["group"] / "download.grib"
+        raw = request_directory(folder, request) / 'download.grib'
         original_hash = hashlib.sha256()
         with raw.open("rb") as stream:
             while (handle := ec.codes_grib_new_from_file(stream)) is not None:
@@ -117,24 +141,29 @@ def check_raw(date, cycle):
         np.testing.assert_array_equal(stored.valid_time.values, init + stored.step.values)
         names = {int(a.attrs["GRIB_paramId"]): name for name, a in stored.data_vars.items()}
         assert len(names) == len(stored.data_vars) == 52 and set(names) == {p for p, _ in expected}
-        for request in manifest["original_requests"]:
-            group = folder / ".cams" / request["group"]
-            state = json.loads((group / "state.json").read_text())
-            assert state["phase"] == "complete" and state["request_id"] == request["request_id"]
-            assert state["account"] == request["account"] and state["request_sha256"] == request["request_sha256"]
-            raw = group / "download.grib"
-            assert digest(raw) == state["sha256"]
-            cubes = cfgrib.open_datasets(str(raw), backend_kwargs={"indexpath": ""})
+        for group_name in dict.fromkeys(request['group'] for request in manifest['original_requests']):
+            cubes = []
             try:
                 grouped = defaultdict(list)
-                for ds in cubes:
-                    for v in ds.data_vars:
-                        a = ds[v].sortby("latitude")
-                        if "isobaricInhPa" in a.coords:
-                            if "isobaricInhPa" not in a.dims:
-                                a = a.expand_dims("isobaricInhPa")
-                            a = a.rename({"isobaricInhPa": "pressure_level"})
-                        grouped[int(a.attrs["GRIB_paramId"])].append(a)
+                for request in manifest['original_requests']:
+                    if request['group'] != group_name:
+                        continue
+                    group = request_directory(folder, request)
+                    state = json.loads((group/'state.json').read_text())
+                    assert state['phase'] == 'complete' and state['request_id'] == request['request_id']
+                    assert state['account'] == request['account'] and state['request_sha256'] == request['request_sha256']
+                    raw = group/'download.grib'
+                    assert digest(raw) == state['sha256']
+                    opened = cfgrib.open_datasets(str(raw), backend_kwargs={'indexpath': ''})
+                    cubes.extend(opened)
+                    for ds in opened:
+                        for v in ds.data_vars:
+                            a = ds[v].sortby('latitude')
+                            if 'isobaricInhPa' in a.coords:
+                                if 'isobaricInhPa' not in a.dims:
+                                    a = a.expand_dims('isobaricInhPa')
+                                a = a.rename({'isobaricInhPa': 'pressure_level'})
+                            grouped[int(a.attrs['GRIB_paramId'])].append(a)
                 for p, parts in grouped.items():
                     leads = set(range(0, 121, 3 if p in SPARSE else 1))
                     ref, partitions = combine(parts, leads)

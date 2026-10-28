@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 import yaml
@@ -29,6 +29,8 @@ class CamsConfig(BaseModel):
     max_asset_bytes: int = Field(default=1024**3, ge=1, le=4 * 1024**3)
     mars_count_retry_limit: int = Field(default=0, ge=0, le=1)
     mars_count_retry_delay_seconds: int = Field(default=1800, ge=300, le=21600)
+    hourly_request_mode: Literal['bundle', 'native_constraint_cubes'] = 'bundle'
+    transfer_connections: int = Field(default=1, ge=1, le=4)
 
     @field_validator("first_init", mode="before")
     @classmethod

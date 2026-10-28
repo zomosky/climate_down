@@ -231,6 +231,10 @@ def cmd_cams(args: argparse.Namespace) -> int:
         if bool(args.date) == bool(args.scheduled):
             raise ValueError("Choose one --date or --scheduled")
         keys = scheduled_inits(cfg, args.cycle, dt.datetime.now(dt.UTC)) if args.scheduled else [f"{args.date}{args.cycle:02d}"]
+        if args.scheduled and getattr(cfg, 'hourly_request_mode', 'bundle') == 'native_constraint_cubes':
+            # A saved recovery must not occupy every tick ahead of a newly due
+            # operational init. Still admit only one pending init per tick.
+            keys.sort(reverse=True)
         if args.preflight_only:
             client, secret = create_client(cfg.account_for(args.cycle))
             rows = []
@@ -255,6 +259,8 @@ def cmd_cams(args: argparse.Namespace) -> int:
                 print(json.dumps(row, ensure_ascii=False), flush=True)
                 continue
             print(json.dumps(row, ensure_ascii=False), flush=True)
+            if args.scheduled and row['status'] == 'yielded_to_realtime':
+                continue
             if row["status"] != "complete":
                 break
         return 1 if blocked else 0

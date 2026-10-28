@@ -169,6 +169,25 @@ def test_existing_raw_bytes_prevent_switching_to_a_different_order(setup, filena
     assert path.read_bytes() == b'original bytes' and len(client.posts) == 1
 
 
+def test_cached_ranges_prevent_replacement_even_before_the_first_contiguous_append(setup):
+    _,folder,client,_,_=setup
+    cache=folder/'download.grib.part.ranges/8-15.part';cache.parent.mkdir();cache.write_bytes(b'original')
+    with pytest.raises(worker.BlockedRequestError):failed(setup)()
+    assert cache.read_bytes()==b'original' and len(client.posts)==1
+
+
+def test_range_identity_failure_is_terminal_and_keeps_original_bytes(setup,monkeypatch):
+    from climate_download.cams.ranges import RangeIdentityError
+    _,folder,client,_,tick=setup;client.remotes['job-1'].json['status']='successful'
+    raw=folder/'download.grib.part';raw.write_bytes(b'original bytes')
+    def changed(*a,**kw):raise RangeIdentityError('Object identity changed')
+    monkeypatch.setattr(worker,'transfer',changed)
+    with pytest.raises(worker.BlockedRequestError,match='range'):tick()
+    with pytest.raises(worker.BlockedRequestError):tick()
+    assert state(folder)['phase']=='validation_failed'
+    assert raw.read_bytes()==b'original bytes' and len(client.posts)==1
+
+
 def test_remote_payload_drift_prevents_replacement(setup):
     _, folder, client, _, _ = setup
     client.remotes['job-1'].json['metadata']['request']['ids']['time'] = ['12:00']

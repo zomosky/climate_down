@@ -7,7 +7,7 @@ import subprocess
 import time
 from urllib.parse import urlsplit
 
-from climate_download.cams.catalogue import DATASET, GROUPS
+from climate_download.cams.catalogue import DATASET, request_variables
 from climate_download.cams.config import Account, CamsConfig
 from climate_download.cams.state import now
 
@@ -51,13 +51,17 @@ def _create_client(account: Account):
 
 def preflight(client, request: dict, group: str) -> dict:
     """Never accepts terms or creates a retrieval; unavailable fields block POST."""
+    date = request['date'].replace('-', '')
+    cycle = int(request['time'][0].split(':')[0])
+    variables = request_variables(request, date, cycle, group)
+    requested_leads = {int(h) for h in request['leadtime_hour']}
     client.get_jobs(limit=1)
     licences = client._profile_api.accepted_licences()
     if not any(x.get("id") == "cc-by" and x.get("revision") == 1
                for x in licences.get("licences", [])):
         raise PreflightRejected("ADS CC-BY licence has not been accepted")
     constraints = client.get_collection(DATASET).constraints
-    for variable in GROUPS[group]:
+    for variable in variables:
         rows = [r for r in constraints if variable.api_name in r.get("variable", [])
                 and "forecast" in r.get("type", [])]
         if variable.pressure_level:
@@ -68,10 +72,10 @@ def preflight(client, request: dict, group: str) -> dict:
                  and any(span.split("/")[0] <= request["date"] <= span.split("/")[-1]
                          for span in r.get("date", []))
                  for h in r.get("leadtime_hour", [])}
-        if not set(variable.leads) <= leads:
+        if not requested_leads <= leads:
             raise NotAvailableYet(f"Full native leads not yet available: {variable.api_name}")
     cost = client.estimate_costs(DATASET, request)
-    expected = sum(len(v.leads) for v in GROUPS[group])
+    expected = len(variables) * len(requested_leads)
     if cost.get("cost") != expected or expected > cost.get("limit", 0):
         raise PreflightRejected("ADS cost/field limit differs from the frozen CAMS request")
     return {"checked_at": now(), "policy_gate": "passed", "cc_by_revision": 1,
@@ -93,6 +97,10 @@ def transfer(remote, part: Path, config: CamsConfig, *, expected_bytes: int | No
         raise ValueError("Partial exceeds the same request's expected byte length")
     if before == expected:
         return {"expected_bytes": expected, "partial_bytes": before, "already_transferred": True}, True
+    if getattr(config, 'transfer_connections', 1) > 1:
+        from climate_download.cams.ranges import transfer_ranges
+        return transfer_ranges(url, part, expected, request_id=remote.request_id,
+                               connections=config.transfer_connections, seconds=config.transfer_seconds)
     # Never place URLs/tokens in process argv, a saved receipt, or a log.
     curl_config = 'url = "' + url.replace("\\", "\\\\").replace('"', '\\"') + '"\n'
     started = time.monotonic()
