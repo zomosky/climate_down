@@ -14,11 +14,18 @@ poll_seconds: 30
 max_run_seconds: 2400
 transfer_seconds: 240
 max_asset_bytes: 1073741824
-# Confirmed MARS -43 only: up to 3 replacements per chain AND per full init.
-# Each stage waits from its observed failure; waiting never holds the account.
-mars_count_retry_limit: 3
+# Confirmed MARS -43 only: up to 48 replacements per chain AND per full init.
+# Wait 30 minutes after a confirmed failure; waiting never holds the account.
+mars_count_retry_limit: 48
 mars_count_retry_delay_seconds: 1800
-mars_count_retry_delays_seconds: [1800, 7200, 21600]
+# One shared 24-hour window from the init's first verified MARS count failure.
+mars_count_retry_window_seconds: 86400
+mars_count_retry_delays_seconds: [1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
+  1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
+  1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
+  1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
+  1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
+  1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800]
 # New realtime groups use disjoint ADS native cubes; existing orders keep their IDs.
 hourly_request_mode: native_constraint_cubes
 # Parallel byte ranges of the same asset; does not add ADS orders or workers.

@@ -93,7 +93,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
     if not weeks:
         return {'status': 'complete', 'cycle': cycle}
     policy = load_policy(root, plan)
-    if policy and (policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
+    if policy and (policy.get('retry_window_seconds') != operational.mars_count_retry_window_seconds
+                   or policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
                    or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
         raise ValueError('Weekly recovery authorization differs from operational configuration')
     state = {'checked_at': now(), 'cycle': cycle, 'week': weeks[0]['id'], 'blocked': [],
@@ -107,7 +108,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
     if not policy and config.mars_count_retry_delays_seconds:
         # A legacy signed plan alone does not authorize the expanded budget.
         config = config.model_copy(update={'mars_count_retry_limit': min(config.mars_count_retry_limit, 1),
-                                           'mars_count_retry_delays_seconds': None})
+                                           'mars_count_retry_delays_seconds': None,
+                                           'mars_count_retry_window_seconds': None})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
     for week in weeks if policy else weeks[:1]:

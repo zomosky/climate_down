@@ -44,9 +44,13 @@ def classify_mars_failure(error: Exception) -> dict | None:
 def policy_for(config) -> dict:
     delays = getattr(config, 'mars_count_retry_delays_seconds', None)
     if delays:
-        return {'schema_version': 2, 'max_retries': config.mars_count_retry_limit,
+        policy = {'schema_version': 2, 'max_retries': config.mars_count_retry_limit,
                 'delays_seconds': list(delays), 'per_init_limit': config.mars_count_retry_limit,
                 'captured_at': now()}
+        window = getattr(config, 'mars_count_retry_window_seconds', None)
+        if window is not None:
+            policy.update(schema_version=3, window_seconds=window)
+        return policy
     return {'max_retries': getattr(config, 'mars_count_retry_limit', 0),
             'delay_seconds': getattr(config, 'mars_count_retry_delay_seconds', 1800), 'captured_at': now()}
 
@@ -78,13 +82,45 @@ def _delays(policy) -> list[int]:
         return [policy['delay_seconds']]*policy['max_retries']
     delays = policy.get('delays_seconds', [])
     limit = policy.get('max_retries')
-    if (policy.get('schema_version') != 2 or type(limit) is not int or not 1 <= limit <= 3
+    daily = policy.get('schema_version') == 3
+    if (policy.get('schema_version') not in (2, 3) or type(limit) is not int or not 1 <= limit <= (48 if daily else 3)
             or not isinstance(delays, list) or len(delays) != limit
             or any(type(d) is not int or not 300 <= d <= 21600 for d in delays)
-            or any(a >= b for a, b in zip(delays, delays[1:]))
+            or (not daily and any(a >= b for a, b in zip(delays, delays[1:])))
+            or (daily and (type(policy.get('window_seconds')) is not int
+                           or not 1800 <= policy['window_seconds'] <= 86400
+                           or any(d != 1800 for d in delays) or sum(delays) > policy['window_seconds']))
             or policy.get('per_init_limit') != limit):
         raise RecoveryBlocked('Invalid retained staged CAMS retry policy')
     return delays
+
+
+def _first_failure_at(config, folder, state) -> dt.datetime:
+    """The immutable failures across all groups anchor one init-wide window."""
+    root = config.output_dir/SOURCE/state['date']/f"{state['cycle']:02d}z"/'.cams'
+    paths = set(root.glob('*/failures/*/failure.json'))
+    paths.update(root.glob('hourly/parts/*/failures/*/failure.json'))
+    paths.update(folder.glob('failures/*/failure.json'))
+    starts = []
+    for path in paths:
+        failure = json.loads(path.read_text())
+        if ((failure.get('diagnostic') or {}).get('kind') == 'mars_field_count_mismatch'
+                and failure.get('local_request_verified') and failure.get('remote_request_verified')):
+            stamp = dt.datetime.fromisoformat(failure['captured_at'])
+            if stamp.tzinfo is None:
+                raise RecoveryBlocked('CAMS retry window requires an aware failure timestamp')
+            starts.append(stamp)
+    if not starts:
+        raise RecoveryBlocked('CAMS retry window has no retained verified failure')
+    return min(starts)
+
+
+def _within_window(config, folder, state, policy) -> bool:
+    windows = [value for value in (policy.get('window_seconds'),
+               getattr(config, 'mars_count_retry_window_seconds', None)) if value is not None]
+    if not windows:
+        return True
+    return dt.datetime.fromisoformat(now()) <= _first_failure_at(config, folder, state)+dt.timedelta(seconds=min(windows))
 
 
 def _allowed(config, state, folder) -> bool:
@@ -95,10 +131,11 @@ def _allowed(config, state, folder) -> bool:
     limit = min(getattr(config, 'mars_count_retry_limit', 0), len(delays))
     if used_count(state) >= limit:
         return False
-    if policy.get('schema_version') == 2:
+    if policy.get('schema_version') in (2, 3):
         return (bool(getattr(config, 'mars_count_retry_delays_seconds', None))
-                and init_used_count(config, folder, state) < min(limit, policy['per_init_limit']))
-    return True
+                and init_used_count(config, folder, state) < min(limit, policy['per_init_limit'])
+                and _within_window(config, folder, state, policy))
+    return _within_window(config, folder, state, policy)
 
 
 def _remote_request(reply) -> dict:
@@ -136,8 +173,8 @@ def _failure_evidence(folder, state, request):
         raise RecoveryBlocked('Retained CAMS retry count differs from its failure evidence')
     policy = state.get('mars_retry_policy', {})
     enrollment = state.get('staged_policy_enrollment')
-    if policy.get('schema_version') == 2:
-        if snapshot.get('mars_retry_policy', {}).get('schema_version') == 2:
+    if policy.get('schema_version') in (2, 3):
+        if snapshot.get('mars_retry_policy', {}).get('schema_version') == policy['schema_version']:
             if snapshot['mars_retry_policy'] != policy or snapshot.get('staged_policy_enrollment') != enrollment:
                 raise RecoveryBlocked('Retained staged CAMS policy changed')
         elif not enrollment:
@@ -148,6 +185,22 @@ def _failure_evidence(folder, state, request):
                     or not path.is_file() or digest(path) != enrollment['sha256']
                     or json.loads(path.read_text())['policy'] != policy):
                 raise RecoveryBlocked('Staged CAMS enrollment checksum or policy changed')
+            prior_policy, prior_enrollment = policy, enrollment
+            while prior_policy != snapshot.get('mars_retry_policy'):
+                if not prior_enrollment:
+                    raise RecoveryBlocked('CAMS policy migration has no retained predecessor')
+                link = folder/prior_enrollment['directory']
+                if (not link.resolve().is_relative_to((folder/'failures').resolve())
+                        or not link.is_file() or digest(link) != prior_enrollment['sha256']):
+                    raise RecoveryBlocked('CAMS policy migration predecessor checksum changed')
+                entry = json.loads(link.read_text())
+                if (entry['policy'] != prior_policy or entry['original_state_sha256'] != previous['state_sha256']
+                        or entry['used_retries'] != used_count(state)
+                        or entry['previous_policy'].get('schema_version', 1) >= prior_policy['schema_version']):
+                    raise RecoveryBlocked('CAMS policy migration differs from original failure evidence')
+                prior_policy, prior_enrollment = entry['previous_policy'], entry.get('previous_enrollment')
+            if prior_enrollment != snapshot.get('staged_policy_enrollment'):
+                raise RecoveryBlocked('CAMS policy migration predecessor identity changed')
     failure = json.loads((archive/'failure.json').read_text())
     if state.get('phase') == 'retry_wait':
         due = dt.datetime.fromisoformat(failure['captured_at'])+dt.timedelta(seconds=_delays(policy)[used_count(state)])
@@ -167,9 +220,11 @@ def _failure_evidence(folder, state, request):
 
 
 def enroll_staged_policy(config, folder, state, request) -> bool:
-    """One explicit v2 enrollment; retain old policy, counts, and failure bytes."""
+    """Enroll once per schema; retain old policies, counts, and failure bytes."""
+    target_version = 3 if getattr(config, 'mars_count_retry_window_seconds', None) else 2
+    old_version = state.get('mars_retry_policy', {}).get('schema_version', 1)
     if (not getattr(config, 'mars_count_retry_delays_seconds', None)
-            or state.get('mars_retry_policy', {}).get('schema_version') == 2
+            or old_version >= target_version
             or state.get('phase') not in ('remote_failed', 'retry_wait')
             or state.get('failure_diagnostic', {}).get('kind') != 'mars_field_count_mismatch'
             or not state.get('mars_retry_policy') or has_raw_evidence(folder)):
@@ -187,7 +242,9 @@ def enroll_staged_policy(config, folder, state, request) -> bool:
     if not (failure.get('local_request_verified') and failure.get('remote_request_verified')
             and failure.get('diagnostic', {}).get('kind') == 'mars_field_count_mismatch'):
         raise RecoveryBlocked('Retained MARS failure is not verified for staged enrollment')
-    path = archive/'staged_policy_enrollment.json'
+    if not _within_window(config, folder, state, policy_for(config)):
+        return False
+    path = archive/('daily_policy_enrollment.json' if target_version == 3 else 'staged_policy_enrollment.json')
     if path.is_file():
         entry = json.loads(path.read_text())
         if (entry['request_id'] != state['request_id'] or entry['previous_policy'] != state['mars_retry_policy']
@@ -199,6 +256,8 @@ def enroll_staged_policy(config, folder, state, request) -> bool:
                  'previous_policy': state['mars_retry_policy'], 'used_retries': used_count(state),
                  'original_state_sha256': state['failed_attempt']['state_sha256'],
                  'policy': policy_for(config), 'reason': 'explicit_staged_recovery_configuration'}
+        if target_version == 3:
+            entry['previous_enrollment'] = state.get('staged_policy_enrollment')
         _archive_exact(path, (json.dumps(entry, ensure_ascii=False, indent=2)+'\n').encode())
     delays = _delays(entry['policy'])
     state.update(mars_retry_policy=entry['policy'], retry_count=entry['used_retries'], phase='retry_wait',
@@ -209,6 +268,12 @@ def enroll_staged_policy(config, folder, state, request) -> bool:
                                + dt.timedelta(seconds=delays[entry['used_retries']])).isoformat())
     save(folder/'state.json', state)
     return True
+
+
+def verify_before_replacement(config, folder, state) -> None:
+    """Recheck after metadata/preflight latency, immediately before reserving a POST."""
+    if not _allowed(config, state, folder):
+        raise RecoveryBlocked('MARS retry window or request/init replacement budget is exhausted')
 
 
 def record_failure(config, folder, state, request, reply, error, secret) -> bool:

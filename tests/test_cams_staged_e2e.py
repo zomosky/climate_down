@@ -167,3 +167,53 @@ def test_exhausted_native_recovery_never_submits_a_fifth_order(system):
     assert not list(folder.glob('*.manifest.json'))
     report('staged-exhaustion',config,client,trace,{'original_plus_replacements':4,
             'failure_archives':4,'manifest_published':False,'no_fifth_order_after_restart_and_time_jump':True})
+
+
+def test_half_hourly_native_recovery_survives_restarts_for_23p5_hours(system):
+    config,clock,client,tmp=system
+    config.mars_count_retry_limit=48
+    config.mars_count_retry_delays_seconds=[1800]*48
+    config.mars_count_retry_window_seconds=86400
+    client.failures=47
+    first=worker.run_init(config,'20261027',0)
+    assert first['status']=='recovery_deferred'
+    originals={str(p):state.digest(p) for p in config.output_dir.glob('ec_cams/20261027/00z/.cams/hourly/parts/*/failures/*/*.json')}
+    root=tmp/'weekly';plan=backfill.make_plan('20260908','20260914',authorized_at=clock[0].isoformat())
+    state.save(root/'plan.json',plan)
+    state.save(root/'recovery_policy.json',make_policy(root,plan,[1800]*48,
+               authorized_at=clock[0].isoformat(),retry_window_seconds=86400))
+    assert backfill.tick(config,root,0)['status']=='complete'
+    for attempt in range(1,48):
+        clock[0]+=dt.timedelta(minutes=30)
+        config=CamsConfig.model_validate(config.model_dump())
+        result=worker.run_init(config,'20261027',0)
+        assert result['status']==('complete' if attempt==47 else 'recovery_deferred')
+    manifest=json.loads(Path(result['manifest']).read_text())
+    assert len(manifest['variables'])==52 and sum(f['records_selected'] for f in manifest['files'])==5732
+    assert all(state.digest(Path(p))==checksum for p,checksum in originals.items())
+    assert sum(recovery.used_count(json.loads(p.read_text())) for p in Path(result['manifest']).parent.glob('.cams/*/parts/*/state.json'))==47
+    report('daily-success',config,client,[first,result],{'elapsed_hours':23.5,'messages':5732,
+           'variables':52,'extra_submissions_for_init':47,'history_completed_during_wait':True,
+           'original_failures_unchanged':True})
+
+
+def test_daily_native_expiry_stops_old_post_but_new_realtime_continues(system):
+    config,clock,client,_=system
+    config.mars_count_retry_limit=48
+    config.mars_count_retry_delays_seconds=[1800]*48
+    config.mars_count_retry_window_seconds=86400
+    client.failures=99
+    assert worker.run_init(config,'20261027',0)['status']=='recovery_deferred'
+    clock[0]+=dt.timedelta(minutes=30)
+    assert worker.run_init(config,'20261027',0)['status']=='recovery_deferred'
+    clock[0]+=dt.timedelta(hours=23,minutes=30,seconds=1)
+    assert worker.run_init(config,'20261027',0)['status']=='yielded_to_realtime'
+    newer=worker.run_init(config,'20261028',0)
+    assert newer['status']=='complete'
+    count=len(client.posts)
+    with pytest.raises(worker.BlockedRequestError):worker.run_init(config,'20261027',0)
+    assert len(client.posts)==count
+    old_posts=[p for p in client.posts if p['date']=='2026-10-27']
+    assert len(old_posts)==2
+    report('daily-expiry',config,client,[newer],{'expired_old_init_additional_posts':0,
+           'new_realtime_completed':True,'old_orders_retained':2,'manifest_for_old_init':False})

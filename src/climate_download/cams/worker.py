@@ -118,6 +118,12 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
                 raise BlockedRequestError("CAMS policy/cost preflight rejected; saved reason requires inspection") from None
             return False
         if retrying:
+            try:
+                recovery.verify_before_replacement(config, folder, state)
+            except recovery.EVIDENCE_ERRORS:
+                state.update(phase='remote_failed', retry_blocked='Recovery window or budget exhausted before submit')
+                save(state_path, state)
+                raise BlockedRequestError('CAMS recovery window or budget expired before submit') from None
             state['retry_count'] = recovery.used_count(state) + 1
             state.setdefault('previous_attempts', []).append({
                 'request_id': state['request_id'], 'phase': 'remote_failed',
