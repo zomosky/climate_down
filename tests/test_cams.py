@@ -233,6 +233,41 @@ def test_transfer_does_not_log_or_put_signed_url_in_argv(config, tmp_path, monke
         module.transfer(remote, part, config, expected_bytes=7)
 
 
+@pytest.mark.parametrize('kind', ['timeout', 'connection', 'chunked', 'http_503', 'curl_timeout',
+                                 'contract', 'auth_403'])
+def test_transient_transfer_defers_same_order_without_permanent_backfill_failure(config, tmp_path, monkeypatch, kind):
+    import requests
+    import subprocess
+    errors={'timeout':requests.ReadTimeout('temporary timeout'),
+            'connection':requests.ConnectionError('temporary connection'),
+            'chunked':requests.exceptions.ChunkedEncodingError('temporary EOF'),
+            'http_503':requests.HTTPError(response=SimpleNamespace(status_code=503)),
+            'curl_timeout':subprocess.TimeoutExpired(['curl'],240),
+            'contract':ValueError('pinned asset length changed'),
+            'auth_403':requests.HTTPError(response=SimpleNamespace(status_code=403))}
+    folder=tmp_path/'group'
+    save(folder/'state.json',{'date':'20261021','cycle':0,'group':'hourly','account':'a','dataset':DATASET,
+         'request_id':'original-job','phase':'waiting_for_remote',
+         'request_sha256':signature(request_for('20261021',0,'hourly'))})
+    part=folder/'download.grib.part';part.write_bytes(b'original partial bytes')
+    client=fake_client();get=client.get_remote
+    def successful(rid):
+        remote=get(rid);remote.json['status']='successful';return remote
+    client.get_remote=successful
+    def fail(*args,**kwargs):raise errors[kind]
+    monkeypatch.setattr(worker,'transfer',fail)
+    for _ in range(2):
+        if kind in ('contract','auth_403'):
+            with pytest.raises(ValueError,match='same request and partial retained'):
+                worker.group_tick(config,folder,'20261021',0,'hourly',client,'')
+        else:
+            assert worker.group_tick(config,folder,'20261021',0,'hourly',client,'') is False
+            assert json.loads((folder/'state.json').read_text())['phase']=='transfer_deferred'
+    state=json.loads((folder/'state.json').read_text())
+    assert state['request_id']=='original-job' and state['error']['type']==type(errors[kind]).__name__
+    assert client.submits==0 and part.read_bytes()==b'original partial bytes'
+
+
 def test_terms_or_cost_rejection_fails_loudly_without_submitting(config, tmp_path, monkeypatch):
     from climate_download.cams.client import PreflightRejected
     def reject(*args):

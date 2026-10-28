@@ -79,6 +79,30 @@ def test_tick_drives_one_init_with_shared_locks_and_original_account(setup, monk
     assert config.first_init == '2026102100'
 
 
+def test_transport_timeout_keeps_week_pending_and_reuses_its_order(setup, monkeypatch):
+    import json
+    import requests
+    from climate_download.cams import worker
+    from test_cams import fake_client
+    config,_,root=setup
+    monkeypatch.setattr(backfill,'pending_inits',lambda *a:[])
+    monkeypatch.setattr(backfill.shutil,'disk_usage',lambda p:(0,0,10**13))
+    client=fake_client();get=client.get_remote
+    def successful(rid):
+        remote=get(rid);remote.json['status']='successful';return remote
+    client.get_remote=successful
+    monkeypatch.setattr(worker,'create_client',lambda account:(client,''))
+    monkeypatch.setattr(worker,'preflight',lambda *a:{'passed':True})
+    def timeout(*a,**k):raise requests.ReadTimeout('temporary object-store timeout')
+    monkeypatch.setattr(worker,'transfer',timeout)
+    for _ in range(2):
+        result=backfill.tick(config,root,0)
+        assert result['status']=='pending' and result['init']=='2026091500'
+    state=json.loads((config.output_dir/'ec_cams/20260915/00z/.cams/hourly/state.json').read_text())
+    assert client.submits==1 and state['request_id']=='original-job'
+    assert state['phase']=='transfer_deferred' and state['transfer_deferred_count']==2
+
+
 def test_terminal_history_failure_is_retained_and_other_inits_can_run(setup, monkeypatch):
     config, plan, root = setup
     monkeypatch.setattr(backfill, 'pending_inits', lambda *a: [])

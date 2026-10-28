@@ -158,8 +158,19 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         save(state_path, state)
         raise BlockedRequestError('CAMS range/object validation failed; original bytes retained') from None
     except Exception as error:
+        import subprocess
+        import requests
+
+        code = getattr(getattr(error, 'response', None), 'status_code', None)
+        transient = (isinstance(error, (requests.Timeout, requests.ConnectionError,
+                                       requests.exceptions.ChunkedEncodingError, subprocess.TimeoutExpired))
+                     or code in (408, 425, 429) or isinstance(code, int) and 500 <= code < 600)
         state.update(last_transfer_check=now(), error=safe_error(error, secret))
+        if transient:
+            state.update(phase='transfer_deferred', transfer_deferred_count=state.get('transfer_deferred_count', 0)+1)
         save(state_path, state)
+        if transient:
+            return False
         raise ValueError("CAMS transfer failed; same request and partial retained") from None
     state.setdefault("transfer_attempts", []).append(receipt)
     state.update(last_transfer_check=now(), partial_bytes=receipt["partial_bytes"],
