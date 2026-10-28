@@ -27,8 +27,10 @@ class CamsConfig(BaseModel):
     max_run_seconds: int = Field(default=2400, ge=0, le=86400)
     transfer_seconds: int = Field(default=240, ge=10, le=600)
     max_asset_bytes: int = Field(default=1024**3, ge=1, le=4 * 1024**3)
-    mars_count_retry_limit: int = Field(default=0, ge=0, le=1)
+    mars_count_retry_limit: int = Field(default=0, ge=0, le=3)
     mars_count_retry_delay_seconds: int = Field(default=1800, ge=300, le=21600)
+    mars_count_retry_delays_seconds: list[Annotated[int, Field(ge=300, le=21600)]] | None = Field(
+        default=None, min_length=1, max_length=3)
     hourly_request_mode: Literal['bundle', 'native_constraint_cubes'] = 'bundle'
     transfer_connections: int = Field(default=1, ge=1, le=4)
 
@@ -48,6 +50,12 @@ class CamsConfig(BaseModel):
             raise ValueError("Unique accounts and explicit 00/12 ownership required")
         if not set(self.cycle_accounts.values()) <= set(names):
             raise ValueError("Unknown cycle account")
+        delays = self.mars_count_retry_delays_seconds
+        if delays is None:
+            if self.mars_count_retry_limit > 1:
+                raise ValueError('Multiple CAMS replacements require explicit staged delays')
+        elif len(delays) != self.mars_count_retry_limit or any(a >= b for a, b in zip(delays, delays[1:])):
+            raise ValueError('CAMS staged delays must increase and match the replacement limit')
         return self
 
     def account_for(self, cycle: int) -> Account:

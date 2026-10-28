@@ -90,6 +90,23 @@ def tick(config, folder: Path, date: str, cycle: int, client, secret: str) -> bo
         raise ValueError('Pinned CAMS partition request/account differs')
     if not state.get('partitioned_request') and (state.get('request_id') or state['phase'] in BLOCKED):
         raise BlockedRequestError('An existing CAMS order cannot be adopted by a different request strategy')
+    if (state['phase'] == 'remote_failed' and state.get('failed_part')
+            and getattr(config, 'mars_count_retry_delays_seconds', None)):
+        from climate_download.cams import recovery
+        try:
+            plan = json.loads(plan_path.read_text())
+            validate_plan(plan, date, cycle)
+            if digest(plan_path) != state['partition_sha256']:
+                raise ValueError('Pinned failed CAMS partition plan changed')
+            part = next(p for p in plan['parts'] if p['id'] == state['failed_part'])
+            child_folder = folder/'parts'/part['id']
+            child = json.loads((child_folder/'state.json').read_text())
+            enrolled = recovery.enroll_staged_policy(config, child_folder, child, part['request'])
+        except (ValueError, OSError, KeyError, StopIteration):
+            raise BlockedRequestError('Retained CAMS piece evidence requires inspection') from None
+        if enrolled:
+            state.update(phase='retry_wait', retry_due_at=child['retry_due_at'])
+            save(state_path, state)
     if state['phase'] in BLOCKED:
         raise BlockedRequestError('CAMS partition retains a failed or uncertain order; inspect its evidence')
     if not plan_path.is_file():
@@ -127,8 +144,10 @@ def tick(config, folder: Path, date: str, cycle: int, client, secret: str) -> bo
         save(folder/'request.json', original)
     elif signature(json.loads((folder/'request.json').read_text())) != signature(original):
         raise ValueError('Original aggregate CAMS request changed')
-    # Each piece is a different disjoint rectangle, never an identical retry.
-    piece_config = config.model_copy(update={'mars_count_retry_limit': 0})
+    # A staged policy authorizes bounded replacements of a failed piece only;
+    # legacy configuration keeps its previous no-piece-retry behavior.
+    piece_config = (config if getattr(config, 'mars_count_retry_delays_seconds', None)
+                    else config.model_copy(update={'mars_count_retry_limit': 0}))
     children = []
     pending = False
     for part in plan['parts']:
@@ -152,6 +171,9 @@ def tick(config, folder: Path, date: str, cycle: int, client, secret: str) -> bo
         if not complete:
             pending = True
             state.update(phase=child['phase'], active_part=part['id'], last_check=now())
+            for key in ('retry_due_at', 'retry_wait_reason'):
+                if key in child:
+                    state[key] = child[key]
             if child.get('request_id'):
                 state['request_id'] = child['request_id']
             break

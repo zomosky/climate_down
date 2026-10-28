@@ -25,19 +25,16 @@ class BlockedRequestError(ValueError):
 
 def newer_live_due(config: CamsConfig, key: str, cycle: int) -> str | None:
     """Yield an older recovery between bounded transfers when live data is due."""
-    if getattr(config, 'hourly_request_mode', 'bundle') != 'native_constraint_cubes':
+    if (getattr(config, 'hourly_request_mode', 'bundle') != 'native_constraint_cubes'
+            and not getattr(config, 'mars_count_retry_delays_seconds', None)):
         return None
     from climate_download.cams.config import candidate_inits
-    candidates = candidate_inits(config, cycle, dt.datetime.now(dt.timezone.utc))
+    at = dt.datetime.fromisoformat(now())
+    candidates = candidate_inits(config, cycle, at)
     if not candidates or candidates[-1] <= key:
         return None
     latest = candidates[-1]
-    folder = config.output_dir/SOURCE/latest[:8]/f'{cycle:02d}z'
-    if (folder/f'{latest[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file():
-        return None
-    if any(json.loads(p.read_text()).get('phase') in BLOCKED for p in (folder/'.cams').glob('*/state.json')):
-        return None
-    return latest
+    return latest if latest in pending_inits(config, cycle, at) else None
 
 
 def _submit_once(folder, state, request, client, secret):
@@ -74,6 +71,16 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         "request_sha256": signature(request), "group": group, "date": date, "cycle": cycle}
     if state["request_sha256"] != signature(request) or state["account"] != account or state["dataset"] != DATASET:
         raise ValueError("Pinned CAMS request/account differs; reconcile the existing job")
+    if any(state.get(k, value) != value for k, value in (('date', date), ('cycle', cycle), ('group', group))):
+        raise BlockedRequestError('Retained CAMS init/group identity requires inspection')
+    for key, value in (('date', date), ('cycle', cycle), ('group', group)):
+        state.setdefault(key, value)
+    try:
+        recovery.enroll_staged_policy(config, folder, state, request)
+    except recovery.EVIDENCE_ERRORS as error:
+        state.update(phase='remote_failed', retry_blocked=safe_error(error, secret))
+        save(state_path, state)
+        raise BlockedRequestError('Staged CAMS recovery evidence requires inspection') from None
     if state["phase"] in BLOCKED:
         raise BlockedRequestError(f"CAMS {state['phase']} requires inspection; automatic resubmission is forbidden")
     target, part = folder / "download.grib", folder / "download.grib.part"
@@ -85,7 +92,7 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     if state['phase'] == 'retry_wait':
         try:
             decision = recovery.retry_decision(config, folder, state, request, client, secret)
-        except recovery.RecoveryBlocked as error:
+        except recovery.EVIDENCE_ERRORS as error:
             state.update(phase='remote_failed', retry_blocked=safe_error(error, secret))
             save(state_path, state)
             raise BlockedRequestError('MARS retry requires inspection; original failure retained') from None
@@ -111,11 +118,12 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
                 raise BlockedRequestError("CAMS policy/cost preflight rejected; saved reason requires inspection") from None
             return False
         if retrying:
-            state['retry_count'] = state.get('retry_count', 0) + 1
+            state['retry_count'] = recovery.used_count(state) + 1
             state.setdefault('previous_attempts', []).append({
                 'request_id': state['request_id'], 'phase': 'remote_failed',
                 'state_archive': str(folder/state['failed_attempt']['directory']/'state.json'),
-                'state_sha256': state['failed_attempt']['state_sha256']})
+                'state_sha256': state['failed_attempt']['state_sha256'],
+                'evidence': dict(state['failed_attempt'])})
         else:
             save(folder / "request.json", request)
         _submit_once(folder, state, request, client, secret)
@@ -140,8 +148,13 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
             remote.get_results()
         except Exception as error:
             failure = error
-        if recovery.record_failure(config, folder, state, request, reply, failure, secret):
-            return False
+        try:
+            if recovery.record_failure(config, folder, state, request, reply, failure, secret):
+                return False
+        except recovery.EVIDENCE_ERRORS as error:
+            state.update(phase='remote_failed', retry_blocked=safe_error(error, secret))
+            save(state_path, state)
+            raise BlockedRequestError('CAMS failed-order evidence requires inspection') from None
         raise BlockedRequestError("ADS job failed; saved sanitized reason, no resubmission")
     if status != "successful":
         state.update(phase="waiting_for_remote")
@@ -251,7 +264,12 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                     # or transfer. A blocked failure must not look alive just
                     # because cron repeatedly encounters it.
                     save(folder / "cams.status.json", {k: state.get(k) for k in (
-                        "date", "cycle", "group", "account", "phase", "last_check", "remote_status", "partial_bytes")})
+                        "date", "cycle", "group", "account", "phase", "last_check", "remote_status", "partial_bytes",
+                        "retry_due_at", "retry_wait_reason")})
+                    if state['phase'] == 'retry_wait':
+                        return {'status': 'recovery_deferred', 'date': date, 'cycle': cycle, 'group': group,
+                                'retry_due_at': state['retry_due_at'],
+                                'reason': state.get('retry_wait_reason', 'staged_delay')}
                     break
                 verified_groups.add(group)
             if pending is None:
@@ -323,6 +341,8 @@ def pending_inits(config: CamsConfig, cycle: int, at) -> list[str]:
             continue
         states = [json.loads(p.read_text()) for p in (folder / ".cams").glob("*/state.json")]
         if any(s.get("phase") in TERMINAL_FAILURES for s in states):
+            continue
+        if any(s.get('phase') == 'retry_wait' for s in states):
             continue
         pending.append(key)
     return pending

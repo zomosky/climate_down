@@ -5,6 +5,7 @@ import argparse
 import datetime as dt
 import fcntl
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -132,13 +133,24 @@ def accepted_case(folder, key):
 
 def accept_tick(op):
     deployment, root, plan = checked_plan(op)
+    policy = None
+    if (root/'recovery_policy.json').is_file():
+        # Production has a pure-stdlib copy beside this host entry; local tests
+        # use its canonical package source without importing upstream packages.
+        module_path = Path(__file__).with_name('cams_queue_policy.py')
+        if not module_path.is_file():
+            module_path = Path(__file__).resolve().parents[1]/'src/climate_download/cams/queue_policy.py'
+        spec = importlib.util.spec_from_file_location('cams_queue_policy', module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        policy = module.load_policy(root, plan)
     # Use the same signed-plan and assessment validation as the download worker.
-    week = None
+    pending, accepted = [], 0
     for candidate in plan['weeks']:
         path = root/'weeks'/candidate['id']/'assessment.json'
         if not path.is_file():
-            week = candidate
-            break
+            pending.append(candidate)
+            continue
         receipt = read(path)
         assert receipt['passed'] is True and receipt['week'] == candidate
         assert receipt['plan_signature'] == hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest()
@@ -148,14 +160,20 @@ def accept_tick(op):
             for stage in ('raw', 'http'):
                 proof = root/'weeks'/candidate['id']/'acceptance'/case['init']/(stage+'_acceptance.json')
                 assert sha(proof) == case[stage+'_sha256'], 'Previously accepted weekly evidence changed'
-    if week is None:
+        accepted += 1
+    if not pending:
         result = {'phase': 'complete', 'checked_at': now(), 'accepted_weeks': len(plan['weeks']),
                   'accepted_inits': plan['inits_total']}
         save(op/'status.json', result)
         return result
+    week = pending[0]
+    if policy:
+        week = next((candidate for candidate in pending
+                     if all(ready(deployment, key) for key in candidate['inits'])), week)
     state = {'phase': 'downloading_week', 'checked_at': now(), 'week': week['id'],
              'expected_inits': len(week['inits']), 'total_weeks': len(plan['weeks']),
-             'accepted_weeks': plan['weeks'].index(week), 'target_start': plan['start']}
+             'accepted_weeks': accepted, 'target_start': plan['start'],
+             'unaccepted_weeks': [candidate['id'] for candidate in pending]}
     missing = [key for key in week['inits'] if not ready(deployment, key)]
     if missing:
         state.update(missing_inits=missing, ready_inits=len(week['inits'])-len(missing))
@@ -184,6 +202,8 @@ def accept_tick(op):
     receipt = {'passed': True, 'completed_at': now(), 'week': week,
                'plan_signature': hashlib.sha256(canonical).hexdigest(), 'cases': cases,
                'messages': len(cases)*5732, 'variables': 52}
+    if policy:
+        receipt['runtime_recovery_policy_sha256'] = sha(root/'recovery_policy.json')
     save(root/'weeks'/week['id']/'assessment.json', receipt)
     state.update(phase='week_accepted', accepted_weeks=state['accepted_weeks']+1)
     save(op/'status.json', state)

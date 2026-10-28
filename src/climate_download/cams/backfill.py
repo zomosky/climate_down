@@ -1,7 +1,7 @@
 """Finite backwards weekly CAMS queue using the production request/locking code.
 
-The host supervisor accepts each whole week before opening the previous week.
-This entry point performs at most one bounded init tick, never a failed-job retry.
+The original week barrier is retained unless a dated runtime authorization
+allows paused recovery to yield to another week. Only full weeks are accepted.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import shutil
 
 from climate_download.cams.catalogue import DATASET, EXPECTED_MESSAGES, SOURCE, VARIABLES
 from climate_download.cams.config import CamsConfig, load_config
+from climate_download.cams.queue_policy import load_policy
 from climate_download.cams.state import digest, now, safe_error, save, signature
 from climate_download.cams.worker import BLOCKED, BlockedRequestError, pending_inits, run_init
 
@@ -47,12 +48,14 @@ def load_plan(path: Path, expected_sha256: str | None = None) -> dict:
     return plan
 
 
-def active_week(root: Path, plan: dict) -> dict | None:
+def pending_weeks(root: Path, plan: dict) -> list[dict]:
+    pending = []
     for week in plan['weeks']:
         folder = root/'weeks'/week['id']
         path = folder/'assessment.json'
         if not path.exists():
-            return week
+            pending.append(week)
+            continue
         receipt = json.loads(path.read_text())
         if (receipt.get('passed') is not True or receipt.get('week') != week
                 or receipt.get('plan_signature') != signature(plan)
@@ -65,7 +68,11 @@ def active_week(root: Path, plan: dict) -> dict | None:
                 evidence = folder/'acceptance'/case['init']/(stage+'_acceptance.json')
                 if not evidence.is_file() or digest(evidence) != case.get(stage+'_sha256'):
                     raise ValueError('Weekly assessment evidence changed or is missing')
-    return None
+    return pending
+
+
+def active_week(root: Path, plan: dict) -> dict | None:
+    return next(iter(pending_weeks(root, plan)), None)
 
 
 def blocked_groups(folder: Path, key: str) -> list[dict]:
@@ -82,33 +89,77 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
     if cycle not in (0, 12):
         raise ValueError('Only 00/12 UTC cycles are supported')
     plan = load_plan(root/'plan.json', expected_sha256)
-    week = active_week(root, plan)
-    if week is None:
+    weeks = pending_weeks(root, plan)
+    if not weeks:
         return {'status': 'complete', 'cycle': cycle}
-    state = {'checked_at': now(), 'cycle': cycle, 'week': week['id'], 'blocked': []}
-    priority = pending_inits(operational, cycle, dt.datetime.now(dt.timezone.utc))
+    policy = load_policy(root, plan)
+    if policy and (policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
+                   or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
+        raise ValueError('Weekly recovery authorization differs from operational configuration')
+    state = {'checked_at': now(), 'cycle': cycle, 'week': weeks[0]['id'], 'blocked': [],
+             'deferred': [], 'deferred_weeks': []}
+    priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
     if priority:
         return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
     # Separate historical floor; normal cron keeps its original configuration.
     config = operational.model_copy(update={'first_init': plan['start']+'00', 'max_run_seconds': 0,
                                              'hourly_request_mode': 'bundle'})
+    if not policy and config.mars_count_retry_delays_seconds:
+        # A legacy signed plan alone does not authorize the expanded budget.
+        config = config.model_copy(update={'mars_count_retry_limit': min(config.mars_count_retry_limit, 1),
+                                           'mars_count_retry_delays_seconds': None})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
-    for key in week['inits']:
-        if int(key[8:]) != cycle:
+    for week in weeks if policy else weeks[:1]:
+        state['week'] = week['id']
+        deferred_before = len(state['deferred'])
+        keys = [key for key in week['inits'] if int(key[8:]) == cycle]
+        blocked_by_key = {}
+        for key in keys:
+            folder = config.output_dir/SOURCE/key[:8]/f'{cycle:02d}z'
+            blocked_by_key[key] = ([] if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file()
+                                   else blocked_groups(folder, key))
+        critical = [row for rows in blocked_by_key.values() for row in rows
+                    if row['phase'] in ('submitting', 'submission_uncertain', 'preflight_rejected')]
+        if critical:
+            return {**state, 'status': 'blocked', 'blocked': state['blocked']+critical}
+        for key in keys:
+            priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
+            if priority:
+                return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
+            folder = config.output_dir/SOURCE/key[:8]/f'{cycle:02d}z'
+            if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file():
+                continue
+            if blocked_by_key[key] and not policy:
+                state['blocked'].extend(blocked_by_key[key])
+                continue
+            try:
+                result = run_init(config, key[:8], cycle)
+            except BlockedRequestError as error:
+                current = blocked_groups(folder, key)
+                if not policy or not current or any(r['phase'] in ('submitting', 'submission_uncertain', 'preflight_rejected')
+                                                    for r in current):
+                    return {**state, 'status': 'blocked', 'init': key, 'error': safe_error(error, '')}
+                state['blocked'].extend(current)
+                continue
+            if result['status'] == 'recovery_deferred':
+                state['deferred'].append({'init': key, **result})
+                continue
+            return {**state, **result, 'init': key}
+        paused = len(state['deferred']) > deferred_before
+        if not paused:
+            for key in week['inits']:
+                folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')/'.cams'
+                for path in folder.glob('*/state.json'):
+                    saved = json.loads(path.read_text())
+                    if (saved.get('phase') in ('retry_wait', 'remote_failed')
+                            and saved.get('failure_diagnostic', {}).get('kind') == 'mars_field_count_mismatch'):
+                        paused = True
+        if policy and paused:
+            state['deferred_weeks'].append(week['id'])
             continue
-        folder = config.output_dir/SOURCE/key[:8]/f'{cycle:02d}z'
-        if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file():
-            continue
-        blocked = blocked_groups(folder, key)
-        if blocked:
-            state['blocked'].extend(blocked)
-            continue
-        try:
-            return {**state, **run_init(config, key[:8], cycle), 'init': key}
-        except BlockedRequestError as error:
-            return {**state, 'status': 'blocked', 'init': key, 'error': safe_error(error, '')}
-    return {**state, 'status': 'needs_inspection' if state['blocked'] else 'waiting_for_week_acceptance'}
+        return {**state, 'status': 'needs_inspection' if state['blocked'] else 'waiting_for_week_acceptance'}
+    return {**state, 'status': 'waiting_for_recovery' if state['deferred'] else 'needs_inspection'}
 
 
 def main(argv=None):

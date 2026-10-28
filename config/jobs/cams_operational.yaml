@@ -14,9 +14,11 @@ poll_seconds: 30
 max_run_seconds: 2400
 transfer_seconds: 240
 max_asset_bytes: 1073741824
-# New submissions only: one identical retry after a confirmed MARS -43 field-count error.
-mars_count_retry_limit: 1
+# Confirmed MARS -43 only: up to 3 replacements per chain AND per full init.
+# Each stage waits from its observed failure; waiting never holds the account.
+mars_count_retry_limit: 3
 mars_count_retry_delay_seconds: 1800
+mars_count_retry_delays_seconds: [1800, 7200, 21600]
 # New realtime groups use disjoint ADS native cubes; existing orders keep their IDs.
 hourly_request_mode: native_constraint_cubes
 # Parallel byte ranges of the same asset; does not add ADS orders or workers.
