@@ -102,10 +102,18 @@ def tick(config, folder: Path, date: str, cycle: int, client, secret: str) -> bo
             child_folder = folder/'parts'/part['id']
             child = json.loads((child_folder/'state.json').read_text())
             enrolled = recovery.enroll_staged_policy(config, child_folder, child, part['request'])
+            from climate_download.cams import deleted
+            deleted_child = (config.deleted_order_retry_limit and child.get('phase') in ('remote_failed','retry_wait')
+                             and (deleted.saved_deleted(child) or child.get('deleted_recovery')))
         except (ValueError, OSError, KeyError, StopIteration):
             raise BlockedRequestError('Retained CAMS piece evidence requires inspection') from None
         if enrolled:
             state.update(phase='retry_wait', retry_due_at=child['retry_due_at'])
+            save(state_path, state)
+        elif deleted_child:
+            # Re-enter the normal child worker; its pinned request, archive,
+            # account, raw-byte and replacement guards still decide recovery.
+            state.update(phase='prepared')
             save(state_path, state)
     if state['phase'] in BLOCKED:
         raise BlockedRequestError('CAMS partition retains a failed or uncertain order; inspect its evidence')

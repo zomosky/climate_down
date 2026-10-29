@@ -149,3 +149,58 @@ def test_host_without_runtime_authorization_preserves_original_week_order(tmp_pa
     _,op,plan=host_setup(tmp_path,monkeypatch,authorize=False)
     result=host.accept_tick(op)
     assert result['week']==plan['weeks'][0]['id'] and result['phase']=='downloading_week'
+
+
+@pytest.mark.parametrize('phase',['remote_failed','validation_failed','waiting_for_remote'])
+def test_one_gap_on_other_cycle_does_not_block_a_finished_lane(setup,monkeypatch,phase):
+    from climate_download.cams.queue_policy import make_policy
+    config,plan,root=prepare(setup,monkeypatch);enable(config,root,plan)
+    save(root/'recovery_policy.json',make_policy(root,plan,config.mars_count_retry_delays_seconds,
+         authorized_at='2026-10-29T06:00:00+00:00',continue_other_weeks_when_blocked=True))
+    first,second=plan['weeks'][:2]
+    gap=next(k for k in first['inits'] if k.endswith('12'))
+    for key in first['inits']:
+        folder=config.output_dir/'ec_cams'/key[:8]/(key[8:]+'z')
+        if key!=gap:save(folder/f'{key[:8]}_{key[8:]}z_ec_cams.manifest.json',{})
+        else:save(folder/'.cams/hourly/state.json',{'phase':phase,'date':key[:8],'cycle':12,
+                  'group':'hourly','request_id':'deleted-original',
+                  'failure_diagnostic':{'kind':'ads_order_deleted'},'deleted_recovery':{'retained':True}})
+    calls=[]
+    def run(cfg,date,cycle):
+        calls.append(date);return {'status':'pending','date':date,'cycle':cycle}
+    monkeypatch.setattr(backfill,'run_init',run)
+    result=backfill.tick(config,root,0)
+    assert result['week']==second['id'] and result['init']==second['inits'][0]
+    assert calls==[second['start']] and first['id'] in result['deferred_weeks']
+    assert not (root/'weeks'/first['id']/'assessment.json').exists()
+
+
+def test_recovered_gap_keeps_the_normal_whole_week_acceptance_barrier(setup,monkeypatch):
+    from climate_download.cams.queue_policy import make_policy
+    config,plan,root=prepare(setup,monkeypatch);enable(config,root,plan)
+    save(root/'recovery_policy.json',make_policy(root,plan,config.mars_count_retry_delays_seconds,
+         authorized_at='2026-10-29T06:00:00+00:00',continue_other_weeks_when_blocked=True))
+    first=plan['weeks'][0]
+    for key in first['inits']:
+        folder=config.output_dir/'ec_cams'/key[:8]/(key[8:]+'z')
+        save(folder/f'{key[:8]}_{key[8:]}z_ec_cams.manifest.json',{})
+        save(folder/'.cams/hourly/state.json',{'phase':'complete','deleted_recovery':{'retained':True}})
+    monkeypatch.setattr(backfill,'run_init',lambda *a:pytest.fail('a completed week is waiting for acceptance'))
+    result=backfill.tick(config,root,0)
+    assert result['status']=='waiting_for_week_acceptance' and result['week']==first['id']
+
+
+@pytest.mark.parametrize('new_live',[False,True])
+def test_short_account_race_does_not_starve_history_or_new_live_work(setup,monkeypatch,new_live):
+    from climate_download.cams.queue_policy import make_policy
+    config,plan,root=prepare(setup,monkeypatch);enable(config,root,plan)
+    save(root/'recovery_policy.json',make_policy(root,plan,config.mars_count_retry_delays_seconds,
+         authorized_at='2026-10-29T06:00:00+00:00',continue_other_weeks_when_blocked=True))
+    calls=[];sleeps=[]
+    def run(*args):calls.append(1);return {'status':'locked' if len(calls)<3 else 'pending'}
+    monkeypatch.setattr(backfill,'run_init',run)
+    monkeypatch.setattr(backfill.time,'sleep',lambda seconds:sleeps.append(seconds))
+    monkeypatch.setattr(backfill,'pending_inits',lambda *a:['2026102900'] if new_live and calls else [])
+    result=backfill.tick(config,root,0)
+    assert result['status']==('waiting_for_realtime' if new_live else 'pending')
+    assert len(calls)==(1 if new_live else 3) and len(sleeps)==(0 if new_live else 2)

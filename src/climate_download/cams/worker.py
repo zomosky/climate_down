@@ -13,6 +13,7 @@ from climate_download.cams.config import CamsConfig
 from climate_download.cams.grib import publish, validate, verify_published
 from climate_download.cams.ranges import RangeIdentityError
 from climate_download.cams import recovery
+from climate_download.cams import deleted
 from climate_download.cams.state import digest, now, safe_error, save, signature
 
 BLOCKED = {"submitting", "submission_uncertain", "remote_failed", "validation_failed", "preflight_rejected"}
@@ -75,6 +76,21 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         raise BlockedRequestError('Retained CAMS init/group identity requires inspection')
     for key, value in (('date', date), ('cycle', cycle), ('group', group)):
         state.setdefault(key, value)
+    if (config.deleted_order_retry_limit and state.get('phase') == 'remote_failed'
+            and not state.get('deleted_recovery') and deleted.saved_deleted(state)):
+        try:
+            original = client.get_remote(state['request_id']).json
+        except Exception as error:
+            if deleted.classify(error, state['request_id']):
+                try:
+                    deleted.record(config, folder, state, request, error, secret)
+                except recovery.EVIDENCE_ERRORS:
+                    raise BlockedRequestError('Deleted ADS order evidence requires inspection') from None
+        else:
+            if (signature(recovery._remote_request(original)) == signature(request)
+                    and original['status'] in ('accepted','running','successful')):
+                state.update(phase='submitted', retry_cancelled_reason='original_order_reactivated')
+                save(state_path, state)
     try:
         recovery.enroll_staged_policy(config, folder, state, request)
     except recovery.EVIDENCE_ERRORS as error:
@@ -91,7 +107,9 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     retrying = False
     if state['phase'] == 'retry_wait':
         try:
-            decision = recovery.retry_decision(config, folder, state, request, client, secret)
+            decision_fn = (deleted.retry_decision if (state.get('failure_diagnostic') or {}).get('kind') == deleted.KIND
+                           else recovery.retry_decision)
+            decision = decision_fn(config, folder, state, request, client, secret)
         except recovery.EVIDENCE_ERRORS as error:
             state.update(phase='remote_failed', retry_blocked=safe_error(error, secret))
             save(state_path, state)
@@ -106,6 +124,19 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         # persisted, every crash/exception is blocked until original-ID recovery.
         if not retrying:
             state.setdefault('mars_retry_policy', recovery.policy_for(config))
+            if config.deleted_order_retry_limit:
+                try:
+                    ready = deleted.account_ready(client)
+                except Exception as error:
+                    state.update(phase='preflight_deferred', last_check=now(), error=safe_error(error, secret))
+                    save(state_path, state)
+                    return False
+                if not ready:
+                    state.update(phase='prepared', last_check=now(), account_wait_reason='another_active_order')
+                    save(state_path, state)
+                    return False
+                state.setdefault('deleted_retry_policy', {'max_retries': config.deleted_order_retry_limit,
+                                                         'captured_at': now()})
         try:
             state["preflight"] = preflight(client, request, group)
         except Exception as error:
@@ -120,6 +151,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         if retrying:
             try:
                 recovery.verify_before_replacement(config, folder, state)
+                if (state.get('failure_diagnostic') or {}).get('kind') == deleted.KIND:
+                    deleted.verify(config, folder, state, request)
             except recovery.EVIDENCE_ERRORS:
                 state.update(phase='remote_failed', retry_blocked='Recovery window or budget exhausted before submit')
                 save(state_path, state)
@@ -129,7 +162,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
                 'request_id': state['request_id'], 'phase': 'remote_failed',
                 'state_archive': str(folder/state['failed_attempt']['directory']/'state.json'),
                 'state_sha256': state['failed_attempt']['state_sha256'],
-                'evidence': dict(state['failed_attempt'])})
+                'evidence': dict(state['failed_attempt']),
+                'failure_kind': (state.get('failure_diagnostic') or {}).get('kind')})
         else:
             save(folder / "request.json", request)
         _submit_once(folder, state, request, client, secret)
@@ -137,6 +171,14 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         remote = client.get_remote(state["request_id"])
         reply = remote.json
     except Exception as error:
+        if config.deleted_order_retry_limit and deleted.classify(error, state['request_id']):
+            try:
+                eligible = deleted.record(config, folder, state, request, error, secret)
+            except recovery.EVIDENCE_ERRORS:
+                raise BlockedRequestError('Deleted ADS order evidence requires inspection') from None
+            if eligible:
+                return False
+            raise BlockedRequestError('Deleted ADS order budget exhausted or raw bytes retained') from None
         state.update(last_check=now(), error=safe_error(error, secret))
         inaccessible = getattr(getattr(error, 'response', None), 'status_code', None) in (400, 401, 403, 404, 422)
         if inaccessible:
@@ -148,6 +190,15 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     status = reply["status"]
     state.update(last_check=now(), remote_status=status,
                  server_timestamps={k: reply.get(k) for k in ("created", "started", "finished", "updated")})
+    if config.deleted_order_retry_limit and status in ('deleted','dismissed'):
+        try:
+            eligible = deleted.record(config, folder, state, request,
+                                      RuntimeError('ADS reported '+status), secret, reply=reply)
+        except recovery.EVIDENCE_ERRORS:
+            raise BlockedRequestError('Deleted ADS order identity or evidence requires inspection') from None
+        if eligible:
+            return False
+        raise BlockedRequestError('Deleted ADS order budget exhausted or raw bytes retained') from None
     if status in ("failed", "rejected", "dismissed", "deleted"):
         failure = RuntimeError('ADS returned a terminal failure without extraction diagnostics')
         try:

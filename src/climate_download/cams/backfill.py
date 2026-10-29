@@ -11,6 +11,7 @@ import fcntl
 import json
 from pathlib import Path
 import shutil
+import time
 
 from climate_download.cams.catalogue import DATASET, EXPECTED_MESSAGES, SOURCE, VARIABLES
 from climate_download.cams.config import CamsConfig, load_config
@@ -93,7 +94,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
     if not weeks:
         return {'status': 'complete', 'cycle': cycle}
     policy = load_policy(root, plan)
-    if policy and (policy.get('retry_window_seconds') != operational.mars_count_retry_window_seconds
+    if policy and (policy.get('deleted_order_retry_limit',0) != operational.deleted_order_retry_limit
+                   or policy.get('retry_window_seconds') != operational.mars_count_retry_window_seconds
                    or policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
                    or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
         raise ValueError('Weekly recovery authorization differs from operational configuration')
@@ -109,7 +111,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
         # A legacy signed plan alone does not authorize the expanded budget.
         config = config.model_copy(update={'mars_count_retry_limit': min(config.mars_count_retry_limit, 1),
                                            'mars_count_retry_delays_seconds': None,
-                                           'mars_count_retry_window_seconds': None})
+                                           'mars_count_retry_window_seconds': None,
+                                           'deleted_order_retry_limit': 0})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
     for week in weeks if policy else weeks[:1]:
@@ -136,7 +139,18 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                 state['blocked'].extend(blocked_by_key[key])
                 continue
             try:
-                result = run_init(config, key[:8], cycle)
+                # Cron starts live checks and history together. Wait briefly
+                # outside account/init locks so completed live checks cannot
+                # win the same race every tick. New live work still wins.
+                attempts = 11 if policy and policy.get('continue_other_weeks_when_blocked') else 1
+                for attempt in range(attempts):
+                    result = run_init(config, key[:8], cycle)
+                    if result['status'] != 'locked' or attempt == attempts-1:
+                        break
+                    priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
+                    if priority:
+                        return {**state, 'status':'waiting_for_realtime', 'priority_inits':priority}
+                    time.sleep(1)
             except BlockedRequestError as error:
                 current = blocked_groups(folder, key)
                 if not policy or not current or any(r['phase'] in ('submitting', 'submission_uncertain', 'preflight_rejected')
@@ -151,11 +165,19 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
         paused = len(state['deferred']) > deferred_before
         if not paused:
             for key in week['inits']:
-                folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')/'.cams'
-                for path in folder.glob('*/state.json'):
+                product = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+                if (product/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
+                    continue
+                folder = product/'.cams'
+                for path in list(folder.glob('*/state.json'))+list(folder.glob('hourly/parts/*/state.json')):
                     saved = json.loads(path.read_text())
-                    if (saved.get('phase') in ('retry_wait', 'remote_failed')
-                            and saved.get('failure_diagnostic', {}).get('kind') == 'mars_field_count_mismatch'):
+                    kind = (saved.get('failure_diagnostic') or {}).get('kind')
+                    old_count_failure = (saved.get('phase') in ('retry_wait','remote_failed')
+                                         and kind == 'mars_field_count_mismatch')
+                    retained_gap = ((policy or {}).get('continue_other_weeks_when_blocked')
+                                    and (saved.get('phase') in ('remote_failed','validation_failed')
+                                         or saved.get('deleted_recovery')))
+                    if old_count_failure or retained_gap:
                         paused = True
         if policy and paused:
             state['deferred_weeks'].append(week['id'])

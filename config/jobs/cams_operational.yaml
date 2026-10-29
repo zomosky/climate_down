@@ -20,6 +20,8 @@ mars_count_retry_limit: 48
 mars_count_retry_delay_seconds: 1800
 # One shared 24-hour window from the init's first verified MARS count failure.
 mars_count_retry_window_seconds: 86400
+# Positively identified deleted/dismissed orders get one identical replacement per init.
+deleted_order_retry_limit: 1
 mars_count_retry_delays_seconds: [1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
   1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
   1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,

@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from climate_download.cams import backfill, grib, partition, recovery, state, worker
+from climate_download.cams import backfill, deleted, grib, partition, recovery, state, worker
 from climate_download.cams.catalogue import VARIABLES
 from climate_download.cams.config import CamsConfig
 from climate_download.cams.queue_policy import make_policy
@@ -25,7 +25,7 @@ from test_cams_partition import constraint_rows
 def system(tmp_path,monkeypatch):
     clock=[dt.datetime(2026,10,27,10,tzinfo=dt.timezone.utc)]
     stamp=lambda:clock[0].isoformat()
-    for module in (state,worker,recovery,partition,grib,backfill):monkeypatch.setattr(module,'now',stamp)
+    for module in (state,worker,recovery,partition,grib,backfill,deleted):monkeypatch.setattr(module,'now',stamp)
     config=CamsConfig(output_dir=tmp_path/'data',first_init='2026102700',max_run_seconds=3600,
         accounts=[{'name':'mock-account','credential_file':tmp_path/'unused'}],
         cycle_accounts={0:'mock-account',12:'mock-account'},hourly_request_mode='native_constraint_cubes',
@@ -217,3 +217,50 @@ def test_daily_native_expiry_stops_old_post_but_new_realtime_continues(system):
     assert len(old_posts)==2
     report('daily-expiry',config,client,[newer],{'expired_old_init_additional_posts':0,
            'new_realtime_completed':True,'old_orders_retained':2,'manifest_for_old_init':False})
+
+
+def test_deleted_native_order_recovers_once_and_history_runs_while_waiting(system):
+    from test_cams_deleted_recovery import DeletedError
+    config,clock,client,tmp=system
+    config.mars_count_retry_limit=48;config.mars_count_retry_delays_seconds=[1800]*48
+    config.mars_count_retry_window_seconds=86400;config.deleted_order_retry_limit=1
+    client.failures=0;original=client.get_remote
+    client.get_remote=lambda rid: (_ for _ in ()).throw(DeletedError(rid)) if rid=='mock-order-001' else original(rid)
+    first=worker.run_init(config,'20261027',0)
+    assert first['status']=='recovery_deferred'
+    proof={str(p):state.digest(p) for p in config.output_dir.glob('ec_cams/20261027/00z/.cams/hourly/parts/*/failures/*/*.json')}
+    root=tmp/'weekly';plan=backfill.make_plan('20260908','20260914',authorized_at=clock[0].isoformat())
+    state.save(root/'plan.json',plan)
+    state.save(root/'recovery_policy.json',make_policy(root,plan,[1800]*48,authorized_at=clock[0].isoformat(),
+        retry_window_seconds=86400,deleted_order_retry_limit=1,continue_other_weeks_when_blocked=True))
+    history=backfill.tick(config,root,0);assert history['status']=='complete'
+    clock[0]+=dt.timedelta(minutes=30)
+    done=worker.run_init(config,'20261027',0);assert done['status']=='complete'
+    manifest=json.loads(Path(done['manifest']).read_text())
+    assert len(manifest['variables'])==52 and sum(f['records_selected'] for f in manifest['files'])==5732
+    assert all(state.digest(Path(p))==checksum for p,checksum in proof.items())
+    assert len([p for p in client.posts if p['request_sha256']==client.first_key])==2
+    report('deleted-success',config,client,[first,history,done],{'replacement_posts':1,
+           'original_failure_evidence_unchanged':True,'history_completed_during_wait':True,
+           'variables':52,'messages':5732})
+
+
+def test_deleted_replacement_deleted_again_does_not_create_a_third_order(system):
+    from test_cams_deleted_recovery import DeletedError
+    config,clock,client,_=system
+    config.mars_count_retry_limit=48;config.mars_count_retry_delays_seconds=[1800]*48
+    config.mars_count_retry_window_seconds=86400;config.deleted_order_retry_limit=1
+    client.failures=0;original=client.get_remote
+    def missing(rid):
+        if state.signature(client.remotes[rid].request)==client.first_key:raise DeletedError(rid)
+        return original(rid)
+    client.get_remote=missing
+    assert worker.run_init(config,'20261027',0)['status']=='recovery_deferred'
+    clock[0]+=dt.timedelta(minutes=30)
+    with pytest.raises(worker.BlockedRequestError):worker.run_init(config,'20261027',0)
+    with pytest.raises(worker.BlockedRequestError):worker.run_init(config,'20261027',0)
+    assert len(client.posts)==2 and len(list(config.output_dir.glob('ec_cams/20261027/00z/.cams/hourly/parts/*/failures/*/failure.json')))==2
+    clock[0]+=dt.timedelta(days=1)
+    fresh=worker.run_init(config,'20261028',0);assert fresh['status']=='complete'
+    report('deleted-exhaustion',config,client,[fresh],{'old_orders_total':2,'third_old_order_submitted':False,
+           'old_failure_archives':2,'new_realtime_completed':True})

@@ -104,8 +104,11 @@ def _first_failure_at(config, folder, state) -> dt.datetime:
     starts = []
     for path in paths:
         failure = json.loads(path.read_text())
-        if ((failure.get('diagnostic') or {}).get('kind') == 'mars_field_count_mismatch'
-                and failure.get('local_request_verified') and failure.get('remote_request_verified')):
+        kind = (failure.get('diagnostic') or {}).get('kind')
+        if (kind in ('mars_field_count_mismatch', 'ads_order_deleted')
+                and failure.get('local_request_verified')
+                and (failure.get('remote_request_verified') or (kind == 'ads_order_deleted'
+                     and failure.get('deleted_response_verified')))):
             stamp = dt.datetime.fromisoformat(failure['captured_at'])
             if stamp.tzinfo is None:
                 raise RecoveryBlocked('CAMS retry window requires an aware failure timestamp')
@@ -349,6 +352,11 @@ def retry_decision(config, folder, state, request, client, secret) -> str | None
     except RecoveryBlocked:
         raise
     except Exception as error:
+        from climate_download.cams import deleted
+        if config.deleted_order_retry_limit and deleted.classify(error, state['request_id']):
+            if not deleted.record(config, folder, state, request, error, secret):
+                raise RecoveryBlocked('Deleted ADS order cannot be replaced within its retained policy') from None
+            return None
         if getattr(getattr(error, 'response', None), 'status_code', None) in (400, 401, 403, 404, 422):
             raise RecoveryBlocked('Original ADS order cannot be verified before retry') from None
         state.update(last_check=now(), retry_wait_reason='metadata_deferred', error=safe_error(error, secret))
