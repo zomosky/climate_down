@@ -230,3 +230,14 @@ def test_ads_naive_utc_job_timestamps_still_detect_matching_orders(setup):
     client.get_remote=lambda rid:SimpleNamespace(json={'status':'successful','metadata':{'request':{'ids':request}}}) if rid=='duplicate' else original(rid)
     with pytest.raises(worker.BlockedRequestError):tick()
     assert len(client.posts)==1
+
+
+def test_a_new_realtime_init_can_submit_behind_an_existing_history_order(setup):
+    config,folder,client,clock,tick=enable(setup)
+    request=client.posts[0].copy();request['date']='2026-10-28'
+    remote=SimpleNamespace(request_id='new-live',json={'status':'accepted','metadata':{'request':{'ids':request}}})
+    posts=[]
+    fresh=SimpleNamespace(get_jobs=lambda **kw:SimpleNamespace(json={'jobs':[{'jobID':'history','status':'running'}]}),
+        submit=lambda dataset,payload:(posts.append(payload) or remote),get_remote=lambda rid:remote)
+    assert worker.group_tick(config,folder.parent/'live','20261028',0,'hourly',fresh,'') is False
+    assert len(posts)==1

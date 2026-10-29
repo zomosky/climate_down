@@ -125,16 +125,9 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         if not retrying:
             state.setdefault('mars_retry_policy', recovery.policy_for(config))
             if config.deleted_order_retry_limit:
-                try:
-                    ready = deleted.account_ready(client)
-                except Exception as error:
-                    state.update(phase='preflight_deferred', last_check=now(), error=safe_error(error, secret))
-                    save(state_path, state)
-                    return False
-                if not ready:
-                    state.update(phase='prepared', last_check=now(), account_wait_reason='another_active_order')
-                    save(state_path, state)
-                    return False
+                # Keep live admission unchanged: it may queue behind the one
+                # historical order already in flight. Only replacements need
+                # an idle account; the weekly runner stops for new live work.
                 state.setdefault('deleted_retry_policy', {'max_retries': config.deleted_order_retry_limit,
                                                          'captured_at': now()})
         try:
