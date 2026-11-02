@@ -115,6 +115,20 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                                            'deleted_order_retry_limit': 0})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
+    quarantine = (policy or {}).get('quarantine_uncertain_submissions', False)
+    uncertain_phases = {'submitting', 'submission_uncertain'}
+    quarantined = []
+    if quarantine:
+        for week in weeks:
+            for key in week['inits']:
+                folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+                if not (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
+                    quarantined.extend(row for row in blocked_groups(folder, key)
+                                       if row['phase'] in uncertain_phases)
+        state['quarantined'] = quarantined
+    quarantined_keys = {row['init'] for row in quarantined}
+    guarded_account = config.account_for(cycle).name in {
+        config.account_for(int(row['init'][8:])).name for row in quarantined}
     for week in weeks if policy else weeks[:1]:
         state['week'] = week['id']
         deferred_before = len(state['deferred'])
@@ -125,7 +139,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
             blocked_by_key[key] = ([] if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file()
                                    else blocked_groups(folder, key))
         critical = [row for rows in blocked_by_key.values() for row in rows
-                    if row['phase'] in ('submitting', 'submission_uncertain', 'preflight_rejected')]
+                    if row['phase'] == 'preflight_rejected'
+                    or (row['phase'] in uncertain_phases and not quarantine)]
         if critical:
             return {**state, 'status': 'blocked', 'blocked': state['blocked']+critical}
         for key in keys:
@@ -134,6 +149,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                 return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
             folder = config.output_dir/SOURCE/key[:8]/f'{cycle:02d}z'
             if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file():
+                continue
+            if key in quarantined_keys:
                 continue
             if blocked_by_key[key] and not policy:
                 state['blocked'].extend(blocked_by_key[key])
@@ -144,7 +161,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                 # win the same race every tick. New live work still wins.
                 attempts = 11 if policy and policy.get('continue_other_weeks_when_blocked') else 1
                 for attempt in range(attempts):
-                    result = run_init(config, key[:8], cycle)
+                    options = {'require_idle_account': True} if guarded_account else {}
+                    result = run_init(config, key[:8], cycle, **options)
                     if result['status'] != 'locked' or attempt == attempts-1:
                         break
                     priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
@@ -153,6 +171,11 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                     time.sleep(1)
             except BlockedRequestError as error:
                 current = blocked_groups(folder, key)
+                if quarantine and any(row['phase'] in uncertain_phases for row in current):
+                    # This POST became uncertain during this tick. Start a
+                    # fresh tick so the next init must use the account guard.
+                    return {**state, 'status': 'waiting_for_account', 'init': key,
+                            'reason': 'new_uncertain_submission', 'blocked': state['blocked']+current}
                 if not policy or not current or any(r['phase'] in ('submitting', 'submission_uncertain', 'preflight_rejected')
                                                     for r in current):
                     return {**state, 'status': 'blocked', 'init': key, 'error': safe_error(error, '')}
@@ -176,7 +199,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                                          and kind == 'mars_field_count_mismatch')
                     retained_gap = ((policy or {}).get('continue_other_weeks_when_blocked')
                                     and (saved.get('phase') in ('remote_failed','validation_failed')
-                                         or saved.get('deleted_recovery')))
+                                         or saved.get('deleted_recovery')
+                                         or (quarantine and saved.get('phase') in uncertain_phases)))
                     if old_count_failure or retained_gap:
                         paused = True
         if policy and paused:

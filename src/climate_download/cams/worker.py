@@ -259,7 +259,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
     return True
 
 
-def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: str = "") -> dict:
+def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: str = "",
+             require_idle_account: bool = False) -> dict:
     key = f"{date}{cycle:02d}"
     if key < config.first_init:
         raise ValueError("Init predates the configured production floor; no historical backfill")
@@ -282,6 +283,23 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                 client, secret = create_client(config.account_for(cycle))
             except Exception:
                 raise ValueError("Unable to initialize CAMS client; check credential file and installed cams extra") from None
+        if require_idle_account:
+            # Only a quarantined historical lane requests this guard. Keep it
+            # under the account lock, and permit polling its own pinned order.
+            paths = list((folder/'.cams').glob('*/state.json'))
+            paths += list((folder/'.cams/hourly/parts').glob('*/state.json'))
+            saved = [json.loads(path.read_text()) for path in paths]
+            known = {s['request_id'] for s in saved if s.get('request_id')
+                     and s.get('phase') not in BLOCKED | {'complete'}}
+            try:
+                jobs = client.get_jobs(limit=100, status=['accepted', 'running']).json['jobs']
+                idle = all(job['jobID'] in known for job in jobs)
+            except Exception as error:
+                return {'status': 'waiting_for_account', 'date': date, 'cycle': cycle,
+                        'reason': 'account_metadata_deferred', 'error': safe_error(error, secret)}
+            if not idle:
+                return {'status': 'waiting_for_account', 'date': date, 'cycle': cycle,
+                        'reason': 'another_active_order_with_quarantined_submission'}
         began = time.monotonic()
         verified_groups = set()
         while True:

@@ -13,7 +13,8 @@ from pathlib import Path
 
 def make_policy(root: Path, plan: dict, delays: list[int], *, authorized_at: str,
                 retry_window_seconds: int | None = None, deleted_order_retry_limit: int = 0,
-                continue_other_weeks_when_blocked: bool = False) -> dict:
+                continue_other_weeks_when_blocked: bool = False,
+                quarantine_uncertain_submissions: bool = False) -> dict:
     daily = retry_window_seconds is not None
     if (not isinstance(delays, list) or not 1 <= len(delays) <= (48 if daily else 3)
             or any(type(d) is not int or not 300 <= d <= 21600 for d in delays)
@@ -23,6 +24,8 @@ def make_policy(root: Path, plan: dict, delays: list[int], *, authorized_at: str
             or type(deleted_order_retry_limit) is not int or deleted_order_retry_limit not in (0,1)
             or (deleted_order_retry_limit and not daily)
             or type(continue_other_weeks_when_blocked) is not bool
+            or type(quarantine_uncertain_submissions) is not bool
+            or (quarantine_uncertain_submissions and not continue_other_weeks_when_blocked)
             or not isinstance(authorized_at, str) or not authorized_at
             or dt.datetime.fromisoformat(authorized_at.replace('Z', '+00:00')).tzinfo is None):
         raise ValueError('An explicit dated and bounded staged recovery authorization is required')
@@ -38,6 +41,8 @@ def make_policy(root: Path, plan: dict, delays: list[int], *, authorized_at: str
     if deleted_order_retry_limit or continue_other_weeks_when_blocked:
         policy.update(schema_version=3, deleted_order_retry_limit=deleted_order_retry_limit,
                       continue_other_weeks_when_blocked=continue_other_weeks_when_blocked)
+    if quarantine_uncertain_submissions:
+        policy.update(schema_version=4, quarantine_uncertain_submissions=True)
     return policy
 
 
@@ -49,7 +54,8 @@ def load_policy(root: Path, plan: dict) -> dict | None:
     expected = make_policy(root, plan, data.get('retry_delays_seconds'), authorized_at=data.get('authorized_at'),
                            retry_window_seconds=data.get('retry_window_seconds'),
                            deleted_order_retry_limit=data.get('deleted_order_retry_limit',0),
-                           continue_other_weeks_when_blocked=data.get('continue_other_weeks_when_blocked',False))
+                           continue_other_weeks_when_blocked=data.get('continue_other_weeks_when_blocked',False),
+                           quarantine_uncertain_submissions=data.get('quarantine_uncertain_submissions',False))
     if data != expected:
         raise ValueError('Weekly staged recovery authorization or signed-plan identity changed')
     return data
