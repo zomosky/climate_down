@@ -202,6 +202,9 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                     retained_gap = ((policy or {}).get('continue_other_weeks_when_blocked')
                                     and (saved.get('phase') in ('remote_failed','validation_failed')
                                          or saved.get('deleted_recovery')
+                                         or (kind in ('mars_field_count_mismatch','mars_runtime_error')
+                                             and saved.get('previous_attempts')
+                                             and saved.get('phase') != 'complete')
                                          or (quarantine and saved.get('phase') in uncertain_phases)))
                     if old_count_failure or retained_gap:
                         paused = True

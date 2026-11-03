@@ -190,6 +190,38 @@ def test_recovered_gap_keeps_the_normal_whole_week_acceptance_barrier(setup,monk
     assert result['status']=='waiting_for_week_acceptance' and result['week']==first['id']
 
 
+@pytest.mark.parametrize('kind',['mars_runtime_error','mars_field_count_mismatch'])
+@pytest.mark.parametrize('phase',['waiting_for_remote','downloading'])
+@pytest.mark.parametrize('prior_failure',[True,False])
+def test_active_mars_replacement_yields_only_with_a_retained_failure(setup,monkeypatch,kind,phase,prior_failure):
+    from climate_download.cams.queue_policy import make_policy
+    config,plan,root=prepare(setup,monkeypatch)
+    config.mars_count_retry_limit=48;config.mars_count_retry_delays_seconds=[1800]*48
+    config.mars_count_retry_window_seconds=86400;config.generic_mars_retry_enabled=True
+    save(root/'recovery_policy.json',make_policy(root,plan,[1800]*48,
+        authorized_at='2026-11-03T08:32:00+00:00',retry_window_seconds=86400,
+        continue_other_weeks_when_blocked=True,generic_mars_retry_enabled=True))
+    first,second=plan['weeks'][:2];gap=first['inits'][0]
+    for key in first['inits']:
+        folder=config.output_dir/'ec_cams'/key[:8]/(key[8:]+'z')
+        if key!=gap:save(folder/f'{key[:8]}_{key[8:]}z_ec_cams.manifest.json',{})
+        else:save(folder/'.cams/pressure850/state.json',{'phase':phase,'date':key[:8],'cycle':0,
+            'group':'pressure850','request_id':'current-order','failure_diagnostic':{'kind':kind},
+            'previous_attempts':[{'request_id':'retained-failed-order','phase':'remote_failed'}] if prior_failure else []})
+    calls=[]
+    def run(cfg,date,cycle):
+        calls.append(date);return {'status':'pending','date':date,'cycle':cycle}
+    monkeypatch.setattr(backfill,'run_init',run)
+    before=digest(root/'plan.json');result=backfill.tick(config,root,12)
+    if prior_failure:
+        assert result['week']==second['id'] and result['init']==second['start']+'12'
+        assert calls==[second['start']] and first['id'] in result['deferred_weeks']
+    else:
+        assert result['week']==first['id'] and result['status']=='waiting_for_week_acceptance'
+        assert not calls
+    assert digest(root/'plan.json')==before and not (root/'weeks'/first['id']/'assessment.json').exists()
+
+
 @pytest.mark.parametrize('new_live',[False,True])
 def test_short_account_race_does_not_starve_history_or_new_live_work(setup,monkeypatch,new_live):
     from climate_download.cams.queue_policy import make_policy
