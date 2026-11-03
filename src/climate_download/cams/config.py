@@ -32,6 +32,7 @@ class CamsConfig(BaseModel):
     mars_count_retry_delays_seconds: list[Annotated[int, Field(ge=300, le=21600)]] | None = Field(
         default=None, min_length=1, max_length=48)
     mars_count_retry_window_seconds: int | None = Field(default=None, ge=1800, le=86400)
+    generic_mars_retry_enabled: bool = False
     deleted_order_retry_limit: int = Field(default=0, ge=0, le=1)
     hourly_request_mode: Literal['bundle', 'native_constraint_cubes'] = 'bundle'
     transfer_connections: int = Field(default=1, ge=1, le=4)
@@ -68,6 +69,8 @@ class CamsConfig(BaseModel):
             raise ValueError('Daily CAMS recovery requires explicit retry intervals')
         if self.deleted_order_retry_limit and self.mars_count_retry_window_seconds is None:
             raise ValueError('Deleted-order recovery requires the bounded daily retry policy')
+        if self.generic_mars_retry_enabled and self.mars_count_retry_window_seconds is None:
+            raise ValueError('Generic MARS recovery requires the bounded daily retry policy')
         return self
 
     def account_for(self, cycle: int) -> Account:

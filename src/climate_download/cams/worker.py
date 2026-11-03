@@ -92,6 +92,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
                 state.update(phase='submitted', retry_cancelled_reason='original_order_reactivated')
                 save(state_path, state)
     try:
+        from climate_download.cams.generic import enroll
+        enroll(config, folder, state, request, client, secret)
         recovery.enroll_staged_policy(config, folder, state, request)
     except recovery.EVIDENCE_ERRORS as error:
         state.update(phase='remote_failed', retry_blocked=safe_error(error, secret))
@@ -142,6 +144,12 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
                 raise BlockedRequestError("CAMS policy/cost preflight rejected; saved reason requires inspection") from None
             return False
         if retrying:
+            priority = (newer_live_due(config, f'{date}{cycle:02d}', cycle)
+                        if (state.get('failure_diagnostic') or {}).get('kind') == 'mars_runtime_error' else None)
+            if priority:
+                state.update(retry_wait_reason='newer_live_due')
+                save(state_path, state)
+                return False
             try:
                 recovery.verify_before_replacement(config, folder, state)
                 if (state.get('failure_diagnostic') or {}).get('kind') == deleted.KIND:

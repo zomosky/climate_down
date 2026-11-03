@@ -95,6 +95,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
         return {'status': 'complete', 'cycle': cycle}
     policy = load_policy(root, plan)
     if policy and (policy.get('deleted_order_retry_limit',0) != operational.deleted_order_retry_limit
+                   or policy.get('generic_mars_retry_enabled',False) != operational.generic_mars_retry_enabled
                    or policy.get('retry_window_seconds') != operational.mars_count_retry_window_seconds
                    or policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
                    or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
@@ -112,6 +113,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
         config = config.model_copy(update={'mars_count_retry_limit': min(config.mars_count_retry_limit, 1),
                                            'mars_count_retry_delays_seconds': None,
                                            'mars_count_retry_window_seconds': None,
+                                           'generic_mars_retry_enabled': False,
                                            'deleted_order_retry_limit': 0})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
@@ -196,7 +198,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                     saved = json.loads(path.read_text())
                     kind = (saved.get('failure_diagnostic') or {}).get('kind')
                     old_count_failure = (saved.get('phase') in ('retry_wait','remote_failed')
-                                         and kind == 'mars_field_count_mismatch')
+                                         and kind in ('mars_field_count_mismatch', 'mars_runtime_error'))
                     retained_gap = ((policy or {}).get('continue_other_weeks_when_blocked')
                                     and (saved.get('phase') in ('remote_failed','validation_failed')
                                          or saved.get('deleted_recovery')

@@ -14,12 +14,13 @@ poll_seconds: 30
 max_run_seconds: 2400
 transfer_seconds: 240
 max_asset_bytes: 1073741824
-# Confirmed MARS -43 only: up to 48 replacements per chain AND per full init.
+# Verified MARS count/empty-diagnostic failures share this per-chain AND per-init cap.
 # Wait 30 minutes after a confirmed failure; waiting never holds the account.
 mars_count_retry_limit: 48
 mars_count_retry_delay_seconds: 1800
-# One shared 24-hour window from the init's first verified MARS count failure.
+# One shared 24-hour window from the init's first verified recoverable failure.
 mars_count_retry_window_seconds: 86400
+generic_mars_retry_enabled: true
 # Positively identified deleted/dismissed orders get one identical replacement per init.
 deleted_order_retry_limit: 1
 mars_count_retry_delays_seconds: [1800, 1800, 1800, 1800, 1800, 1800, 1800, 1800,
