@@ -36,7 +36,7 @@ uv run --extra cams climate_download cams --config config/jobs/cams_operational.
 
 状态在 `<root>/ec_cams/<date>/<cycle>z/.cams/<group>/state.json`。
 请求ID、账号、请求摘要及原始分片固定关联；常规重复调用恢复同一个请求，不自动取消。
-仅明确启用并在首次提交时固定策略的新请求，可按下述MARS计数异常规则追加一次原参数请求。
+仅明确启用并固定恢复策略的请求，可按下述有界恢复规则追加原参数请求。
 提交前先持久化意图；提交响应不确定或提交中崩溃会停止自动重提，需只读核对ADS原请求ID后恢复。
 `remote_failed`和`validation_failed`保留失败证据，必须定位后处理，不能删除状态以绕过失败。
 定时扫描会单独报告这些需检查的起报，并继续后续起报；不会自动重提原失败请求。
@@ -64,9 +64,34 @@ uv run --extra cams climate_download cams --config config/jobs/cams_operational.
 已明确授权的有限缺口可在对应起报目录保存 `cams.catchup.json`，记录 `date`、`cycle`、
 `authorized_at` 及恢复原因。定时扫描只接纳生产下限之后、已到发布时间的标记，
 即使近期窗口移动仍继续补齐；正式manifest发布后保留标记作审计，但不再额外调度该旧起报。
-历史回补与实时任务共用优先级判定；终止失败不再造成历史任务无限等待，提交结果不确定仍需核对原订单。
+历史回补与实时任务共用优先级判定；终止失败不再造成历史任务无限等待。提交结果不确定需核对原订单，可按下面的显式隔离与一次性恢复流程处理。
 官方00/12 UTC发布约为10/22 UTC，ADS排队、传输及切片延迟另计，不保证+10h已经落盘。
 官方时刻依据：[ECMWF dissemination schedule](https://confluence.ecmwf.int/pages/viewpage.action?navigatingVersions=true&pageId=738034858)。
+
+### 提交超时隔离与原订单恢复
+
+`quarantine_uncertain_submissions: true` 将无确定回执的 `submitting` / `submission_uncertain`
+起报保留为待查缺口；默认关闭，生产明确启用。被隔离的起报仍出现在定时扫描报告中，但不再作为
+可执行实时优先级永久挡住历史队列，也不会自动再次POST。父小时组和原生子块都参与判定。
+存在这类缺口的账号，其历史worker必须在账号锁下核对在途订单，允许续接自己的固定ID，
+其他在途单或元数据不可核验时先等待。新到期实时请求保留原提交机会；已完成manifest仍是唯一ready信号。
+
+`climate_download.cams.submission.recover_submission` 是显式运维恢复入口，不由cron自动授予重提权限。
+它使用正常账号和起报锁，验证原账号、请求、原生分块计划及摘要，再通过有界GET查单。
+查询从起报时刻附近开始，最多10页、每页100单，并限制元数据核对耗时；完整覆盖当前可见列表
+仍不能证明原POST没有发生。唯一同参数单才接回原ID；多个候选、分页或元数据异常时停止。
+预检前后再次核对订单，防止恢复期间刚出现的原单被重复提交。
+
+未找到原单时，只有本次明确授权绑定的原state/request SHA、`max_extra_submissions: 1`、
+带时区的授权/到期时间和原因才允许原参数补提。原state/request、父状态及原生计划保存在
+`uncertain/<intent_signature>/`，查单回执和授权单独留档，不覆盖旧错误。
+每个原请求的 `submission_replacements/<request_sha256>.json` 在POST之前以独占方式写入额度保留凭据；
+进程中断、返回再次超时、重复执行都不能追加第二次。查回原单不消耗新次数；原单已成功只续传。
+补提次数计入原起报共享上限，24小时窗口取原首次有效失败/原提交意图中最早时刻，不因登记或重启重置。
+分块接回后同步解除父状态的占位，重复运行不会回退已完成分块或完整小时组。
+
+此开关只改变调度隔离，不扩大MARS/删除恢复预算，也不授权其他无回执缺口补提。
+`2026090100` gust 等未获对应补提授权的记录继续保留待核对。
 
 ### MARS字段计数异常恢复
 

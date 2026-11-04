@@ -254,13 +254,18 @@ def cmd_cams(args: argparse.Namespace) -> int:
             except BlockedRequestError as error:
                 if not args.scheduled:
                     raise
-                blocked = True
-                row = {"status": "blocked", "date": key[:8], "cycle": args.cycle,
+                from climate_download.cams.submission import uncertain_groups
+                folder = cfg.output_dir/'ec_cams'/key[:8]/f'{args.cycle:02d}z'
+                quarantined = cfg.quarantine_uncertain_submissions and uncertain_groups(folder, key)
+                blocked |= not bool(quarantined)
+                row = {"status": "quarantined" if quarantined else "blocked", "date": key[:8], "cycle": args.cycle,
                        "error": safe_error(error, secret)}
                 print(json.dumps(row, ensure_ascii=False), flush=True)
                 continue
             print(json.dumps(row, ensure_ascii=False), flush=True)
-            if args.scheduled and row['status'] in ('yielded_to_realtime', 'recovery_deferred'):
+            if row['status'] == 'quarantined' and not args.scheduled:
+                blocked = True
+            if args.scheduled and row['status'] in ('yielded_to_realtime', 'recovery_deferred', 'quarantined'):
                 continue
             if row["status"] != "complete":
                 break

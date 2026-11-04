@@ -121,16 +121,19 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
     uncertain_phases = {'submitting', 'submission_uncertain'}
     quarantined = []
     if quarantine:
+        from climate_download.cams.submission import uncertain_groups
         for week in weeks:
             for key in week['inits']:
                 folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
                 if not (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
-                    quarantined.extend(row for row in blocked_groups(folder, key)
-                                       if row['phase'] in uncertain_phases)
+                    quarantined.extend(uncertain_groups(folder, key))
         state['quarantined'] = quarantined
     quarantined_keys = {row['init'] for row in quarantined}
     guarded_account = config.account_for(cycle).name in {
         config.account_for(int(row['init'][8:])).name for row in quarantined}
+    if operational.quarantine_uncertain_submissions:
+        from climate_download.cams.submission import uncertain_accounts
+        guarded_account |= config.account_for(cycle).name in uncertain_accounts(operational)
     for week in weeks if policy else weeks[:1]:
         state['week'] = week['id']
         deferred_before = len(state['deferred'])

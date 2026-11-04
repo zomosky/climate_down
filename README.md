@@ -1,5 +1,7 @@
 # climate_download
 
+ECCAMS 的原订单续接、提交超时隔离、一次性授权恢复和按周回补见 [CAMS 运维说明](docs/CAMS.md)。
+
 ENS 事件概率新增 `ifs-ens-probabilities`（5 个降水/阵风字段）与
 `aifs-ens-probabilities`（14 个事件概率参数）。多时间包、原始窗口及每天
 北京时间 05:15/17:15 的调度见 [ENS 接入说明](deploy/ENS_PROBABILITIES.md)。

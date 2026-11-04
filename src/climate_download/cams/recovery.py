@@ -71,6 +71,12 @@ def init_used_count(config, folder, state) -> int:
     for path in paths:
         if path.resolve() != (folder/'state.json').resolve():
             total += used_count(json.loads(path.read_text()))
+    from climate_download.cams.submission import read_replacement
+    for path in (root/'submission_replacements').glob('*.json'):
+        entry = read_replacement(root, path)
+        saved = state if (root/entry['folder']).resolve() == folder.resolve() else json.loads(
+            (root/entry['folder']/'state.json').read_text())
+        total += max(0, entry['reserved_retry_count']-used_count(saved))
     return total
 
 
@@ -118,6 +124,9 @@ def _first_failure_at(config, folder, state) -> dt.datetime:
     enrollments.update(root.glob('hourly/parts/*/failures/*/generic_mars_enrollment.json'))
     enrollments.update(folder.glob('failures/*/generic_mars_enrollment.json'))
     starts.extend(dt.datetime.fromisoformat(read_enrollment(path)['observed_at']) for path in enrollments)
+    from climate_download.cams.submission import read_replacement
+    starts.extend(dt.datetime.fromisoformat(read_replacement(root, path)['window_start_at'])
+                  for path in (root/'submission_replacements').glob('*.json'))
     if not starts:
         raise RecoveryBlocked('CAMS retry window has no retained verified failure')
     return min(starts)

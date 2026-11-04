@@ -33,6 +33,7 @@ class CamsConfig(BaseModel):
         default=None, min_length=1, max_length=48)
     mars_count_retry_window_seconds: int | None = Field(default=None, ge=1800, le=86400)
     generic_mars_retry_enabled: bool = False
+    quarantine_uncertain_submissions: bool = False
     deleted_order_retry_limit: int = Field(default=0, ge=0, le=1)
     hourly_request_mode: Literal['bundle', 'native_constraint_cubes'] = 'bundle'
     transfer_connections: int = Field(default=1, ge=1, le=4)

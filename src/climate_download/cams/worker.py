@@ -15,6 +15,7 @@ from climate_download.cams.ranges import RangeIdentityError
 from climate_download.cams import recovery
 from climate_download.cams import deleted
 from climate_download.cams.state import digest, now, safe_error, save, signature
+from climate_download.cams.submission import uncertain_groups
 
 BLOCKED = {"submitting", "submission_uncertain", "remote_failed", "validation_failed", "preflight_rejected"}
 TERMINAL_FAILURES = {"remote_failed", "validation_failed", "preflight_rejected"}
@@ -286,6 +287,11 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
             return {"status": "locked", "date": date, "cycle": cycle}
         if verify_published(folder, date, cycle):
             return {"status": "complete", "date": date, "cycle": cycle, "resumed": True}
+        if config.quarantine_uncertain_submissions:
+            uncertain = uncertain_groups(folder, key)
+            if uncertain:
+                return {'status': 'quarantined', 'date': date, 'cycle': cycle,
+                        'reason': 'submission_uncertain', 'retained': uncertain}
         if client is None:
             try:
                 client, secret = create_client(config.account_for(cycle))
@@ -409,11 +415,13 @@ def scheduled_inits(config: CamsConfig, cycle: int, at) -> list[str]:
 
 
 def pending_inits(config: CamsConfig, cycle: int, at) -> list[str]:
-    """Live priority excludes terminal failures but retains uncertain submissions."""
+    """Only executable live work has priority; opt-in unknown gaps stay retained."""
     pending = []
     for key in scheduled_inits(config, cycle, at):
         folder = config.output_dir / SOURCE / key[:8] / f"{cycle:02d}z"
         if (folder / f"{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json").is_file():
+            continue
+        if config.quarantine_uncertain_submissions and uncertain_groups(folder, key):
             continue
         states = [json.loads(p.read_text()) for p in (folder / ".cams").glob("*/state.json")]
         if any(s.get("phase") in TERMINAL_FAILURES for s in states):
