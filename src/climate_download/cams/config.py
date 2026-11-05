@@ -5,7 +5,7 @@ import datetime as dt
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 import yaml
 
 
@@ -20,6 +20,9 @@ class CamsConfig(BaseModel):
     output_dir: Path
     accounts: list[Account] = Field(min_length=1)
     cycle_accounts: dict[int, str]
+    history_accounts: list[str] = Field(default_factory=list, max_length=3)
+    max_active_orders_per_account: Literal[1] | None = None
+    _realtime_config: CamsConfig | None = PrivateAttr(default=None)
     first_init: str
     lookback_days: int = Field(default=1, ge=0, le=2)
     publish_lag_hours: float = Field(default=10, ge=10, le=24)
@@ -54,6 +57,11 @@ class CamsConfig(BaseModel):
             raise ValueError("Unique accounts and explicit 00/12 ownership required")
         if not set(self.cycle_accounts.values()) <= set(names):
             raise ValueError("Unknown cycle account")
+        if (len(self.history_accounts) != len(set(self.history_accounts))
+                or not set(self.history_accounts) <= set(names)
+                or (self.history_accounts and (not set(self.cycle_accounts.values()) <= set(self.history_accounts)
+                                               or self.max_active_orders_per_account != 1))):
+            raise ValueError('History accounts must include live owners and enforce one active order per account')
         delays = self.mars_count_retry_delays_seconds
         if delays is None:
             if self.mars_count_retry_limit > 1:

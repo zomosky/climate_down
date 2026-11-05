@@ -1,5 +1,6 @@
 """The host gate checks actual complete cases and export bytes before advancing."""
 import importlib.util
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,31 @@ from climate_download.cams.state import digest, save
 spec = importlib.util.spec_from_file_location('cams_backfill_host', Path(__file__).parents[1]/'deploy/cams_backfill.py')
 host = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(host)
+
+
+def test_host_account_lane_keeps_a_separate_receipt_and_passes_the_selector(tmp_path, monkeypatch):
+    root, op = tmp_path/'data', tmp_path/'op'
+    plan = backfill.make_plan('20260101', '20260921', authorized_at='2026-11-05T10:00:00Z')
+    save(root/'plan.json', plan)
+    save(op/'deployment.json', {'host_queue_root': str(root), 'container_queue_root': '/queue',
+                              'plan_sha256': digest(root/'plan.json')})
+    def run(command, **kwargs):
+        assert command[-2:] == ['--account', 'zomo'] and '--cycle' not in command
+        assert command[command.index('-w')+1] == '/workspace/releases/test'
+        assert 'PYTHONPATH=/workspace/releases/test/src' in command
+        save(root/'worker-account-zomo.json', {'status': 'pending', 'account': 'zomo'})
+        return SimpleNamespace(returncode=0, stdout='ok', stderr='')
+    monkeypatch.setattr(host.subprocess, 'run', run)
+    assert host.main(['--operation-dir', str(op), '--account', 'zomo',
+                      '--runtime-root', '/workspace/releases/test']) == 0
+    assert (op/'run-account-zomo.json').is_file()
+    assert not (op/'run-00.json').exists()
+
+
+def test_host_rejects_an_account_path_before_writing_anything(tmp_path):
+    with pytest.raises(SystemExit):
+        host.main(['--operation-dir', str(tmp_path/'op'), '--account', '../zomo'])
+    assert not (tmp_path/'op').exists()
 
 
 def evidence(folder, key):

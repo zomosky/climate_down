@@ -14,6 +14,8 @@ import shutil
 import time
 
 from climate_download.cams.catalogue import DATASET, EXPECTED_MESSAGES, SOURCE, VARIABLES
+from climate_download.cams import allocation
+from climate_download.cams.client import create_client
 from climate_download.cams.config import CamsConfig, load_config
 from climate_download.cams.queue_policy import load_policy
 from climate_download.cams.state import digest, now, safe_error, save, signature
@@ -86,9 +88,17 @@ def blocked_groups(folder: Path, key: str) -> list[dict]:
     return rows
 
 
-def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=None) -> dict:
-    if cycle not in (0, 12):
-        raise ValueError('Only 00/12 UTC cycles are supported')
+def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, account: str | None = None,
+         expected_sha256=None) -> dict:
+    if (cycle is None) == (account is None) or cycle is not None and cycle not in (0, 12):
+        raise ValueError('Choose one account or a 00/12 UTC cycle')
+    pooled = bool(operational.history_accounts)
+    if account is not None and account not in operational.history_accounts:
+        raise ValueError('Account is not authorized for historical work')
+    lane_account = account if account is not None else operational.account_for(cycle).name
+    def live_priority():
+        return [key for c in ((0, 12) if pooled else (cycle,))
+                for key in pending_inits(operational, c, dt.datetime.fromisoformat(now()))]
     plan = load_plan(root/'plan.json', expected_sha256)
     weeks = pending_weeks(root, plan)
     if not weeks:
@@ -100,9 +110,9 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                    or policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
                    or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
         raise ValueError('Weekly recovery authorization differs from operational configuration')
-    state = {'checked_at': now(), 'cycle': cycle, 'week': weeks[0]['id'], 'blocked': [],
+    state = {'checked_at': now(), 'cycle': cycle, 'account': lane_account, 'week': weeks[0]['id'], 'blocked': [],
              'deferred': [], 'deferred_weeks': []}
-    priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
+    priority = live_priority()
     if priority:
         return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
     # Separate historical floor; normal cron keeps its original configuration.
@@ -117,6 +127,20 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                                            'deleted_order_retry_limit': 0})
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
+    client, secret, active = None, '', None
+    if pooled:
+        config._realtime_config = operational
+        try:
+            client, secret = create_client(next(a for a in config.accounts if a.name == lane_account))
+            jobs = client.get_jobs(limit=100, status=['accepted', 'running']).json['jobs']
+            active = allocation.active_init(config, plan, jobs)
+            if active and allocation.owner(config, root, plan, active) != lane_account:
+                raise ValueError('Active ADS order belongs to another retained account')
+            if active and not any(active in week['inits'] for week in weeks):
+                raise ValueError('Active ADS order belongs to an already accepted week')
+        except Exception as error:
+            return {**state, 'status': 'waiting_for_account', 'reason': 'active_order_or_metadata_unverified',
+                    'error': safe_error(error, secret)}
     quarantine = (policy or {}).get('quarantine_uncertain_submissions', False)
     uncertain_phases = {'submitting', 'submission_uncertain'}
     quarantined = []
@@ -129,19 +153,25 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                     quarantined.extend(uncertain_groups(folder, key))
         state['quarantined'] = quarantined
     quarantined_keys = {row['init'] for row in quarantined}
-    guarded_account = config.account_for(cycle).name in {
+    guarded_account = pooled or config.account_for(cycle).name in {
         config.account_for(int(row['init'][8:])).name for row in quarantined}
-    if operational.quarantine_uncertain_submissions:
+    if operational.quarantine_uncertain_submissions and not pooled:
         from climate_download.cams.submission import uncertain_accounts
         guarded_account |= config.account_for(cycle).name in uncertain_accounts(operational)
     for week in weeks if policy else weeks[:1]:
         state['week'] = week['id']
         deferred_before = len(state['deferred'])
-        keys = [key for key in week['inits'] if int(key[8:]) == cycle]
+        keys = [key for key in week['inits'] if cycle is None or int(key[8:]) == cycle]
+        if pooled:
+            keys = [key for key in keys if not (config.output_dir/SOURCE/key[:8]/(key[8:]+'z')/
+                    f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file()]
+            owners = {key: allocation.owner(config, root, plan, key) for key in keys}
+            keys = [key for key in keys if owners[key] in (None, lane_account) and (not active or key == active)]
+            keys.sort(key=lambda key: owners[key] != lane_account)
         blocked_by_key = {}
         for key in keys:
-            folder = config.output_dir/SOURCE/key[:8]/f'{cycle:02d}z'
-            blocked_by_key[key] = ([] if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file()
+            folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+            blocked_by_key[key] = ([] if (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file()
                                    else blocked_groups(folder, key))
         critical = [row for rows in blocked_by_key.values() for row in rows
                     if row['phase'] == 'preflight_rejected'
@@ -149,17 +179,22 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
         if critical:
             return {**state, 'status': 'blocked', 'blocked': state['blocked']+critical}
         for key in keys:
-            priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
+            priority = live_priority()
             if priority:
                 return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
-            folder = config.output_dir/SOURCE/key[:8]/f'{cycle:02d}z'
-            if (folder/f'{key[:8]}_{cycle:02d}z_{SOURCE}.manifest.json').is_file():
+            folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+            if (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
                 continue
             if key in quarantined_keys:
                 continue
             if blocked_by_key[key] and not policy:
                 state['blocked'].extend(blocked_by_key[key])
                 continue
+            if pooled and not allocation.claim(config, root, plan, key, lane_account):
+                continue
+            current_cycle = int(key[8:])
+            scoped = config.model_copy(update={'cycle_accounts': {**config.cycle_accounts,
+                                                                 current_cycle: lane_account}}) if pooled else config
             try:
                 # Cron starts live checks and history together. Wait briefly
                 # outside account/init locks so completed live checks cannot
@@ -167,10 +202,12 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                 attempts = 11 if policy and policy.get('continue_other_weeks_when_blocked') else 1
                 for attempt in range(attempts):
                     options = {'require_idle_account': True} if guarded_account else {}
-                    result = run_init(config, key[:8], cycle, **options)
+                    if pooled:
+                        options.update(client=client, secret=secret)
+                    result = run_init(scoped, key[:8], current_cycle, **options)
                     if result['status'] != 'locked' or attempt == attempts-1:
                         break
-                    priority = pending_inits(operational, cycle, dt.datetime.fromisoformat(now()))
+                    priority = live_priority()
                     if priority:
                         return {**state, 'status':'waiting_for_realtime', 'priority_inits':priority}
                     time.sleep(1)
@@ -211,7 +248,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int, *, expected_sha256=Non
                                          or (quarantine and saved.get('phase') in uncertain_phases)))
                     if old_count_failure or retained_gap:
                         paused = True
-        if policy and paused:
+        if (policy and paused) or (pooled and active and active not in week['inits']):
             state['deferred_weeks'].append(week['id'])
             continue
         return {**state, 'status': 'needs_inspection' if state['blocked'] else 'waiting_for_week_acceptance'}
@@ -223,19 +260,25 @@ def main(argv=None):
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--plan-sha256', required=True)
-    parser.add_argument('--cycle', type=int, choices=(0, 12), required=True)
+    selector = parser.add_mutually_exclusive_group(required=True)
+    selector.add_argument('--cycle', type=int, choices=(0, 12))
+    selector.add_argument('--account')
     args = parser.parse_args(argv)
     args.root.mkdir(parents=True, exist_ok=True)
-    with (args.root/f'worker-{args.cycle:02d}.lock').open('a') as lock:
+    config = load_config(args.config)
+    if args.account is not None and args.account not in config.history_accounts:
+        parser.error('Account is not authorized for historical work')
+    lane = f'account-{args.account}' if args.account is not None else f'{args.cycle:02d}'
+    with (args.root/f'worker-{lane}.lock').open('a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return 0
         try:
-            result = tick(load_config(args.config), args.root, args.cycle, expected_sha256=args.plan_sha256)
+            result = tick(config, args.root, args.cycle, account=args.account, expected_sha256=args.plan_sha256)
         except Exception as error:
             result = {'status': 'failed', 'cycle': args.cycle, 'checked_at': now(), 'error': safe_error(error, '')}
-        save(args.root/f'worker-{args.cycle:02d}.json', result)
+        save(args.root/f'worker-{lane}.json', result)
         print(json.dumps(result, ensure_ascii=False))
         return 1 if result['status'] in ('failed', 'blocked', 'needs_inspection') else 0
 

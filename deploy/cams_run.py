@@ -29,7 +29,10 @@ def main(argv=None):
     p.add_argument("--once", action="store_true")
     p.add_argument("--preflight-only", action="store_true")
     p.add_argument("--trigger", choices=("cron", "manual"), default="manual")
+    p.add_argument("--runtime-root", type=Path)
     args = p.parse_args(argv)
+    if args.runtime_root is not None and not args.runtime_root.is_absolute():
+        p.error('Runtime root must be an absolute container path')
     operation = Path(os.environ.get("CAMS_OPERATION_DIR", str(Path(__file__).resolve().parent / "cams")))
     operation.mkdir(parents=True, exist_ok=True)
     with (operation / f"worker-{args.cycle:02d}.lock").open("a") as lock:
@@ -41,7 +44,11 @@ def main(argv=None):
                  "cycle": args.cycle, "trigger": args.trigger, "phase": "running"}
         state_path = operation / f"run-{args.cycle:02d}.json"
         write(state_path, state)
-        command = ["docker", "exec", "-w", "/workspace/climate_down", "zhangmy-dev",
+        workdir = str(args.runtime_root) if args.runtime_root is not None else '/workspace/climate_down'
+        command = ["docker", "exec"]
+        if args.runtime_root is not None:
+            command += ['-e', 'PYTHONDONTWRITEBYTECODE=1', '-e', 'PYTHONPATH='+workdir+'/src']
+        command += ["-w", workdir, "zhangmy-dev",
                    "/workspace/climate_down/.venv/bin/python", "-m", "climate_download.cli", "cams",
                    "--config", "config/jobs/cams_operational.yaml", "--cycle", str(args.cycle), "--scheduled"]
         if args.once:

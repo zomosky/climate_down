@@ -27,6 +27,11 @@ class BlockedRequestError(ValueError):
 
 def newer_live_due(config: CamsConfig, key: str, cycle: int) -> str | None:
     """Yield an older recovery between bounded transfers when live data is due."""
+    if config._realtime_config is not None:
+        live = config._realtime_config
+        at = dt.datetime.fromisoformat(now())
+        pending = [k for c in (0, 12) for k in pending_inits(live, c, at)]
+        return min(pending, default=None)
     if (getattr(config, 'hourly_request_mode', 'bundle') != 'native_constraint_cubes'
             and not getattr(config, 'mars_count_retry_delays_seconds', None)):
         return None
@@ -128,9 +133,8 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         if not retrying:
             state.setdefault('mars_retry_policy', recovery.policy_for(config))
             if config.deleted_order_retry_limit:
-                # Keep live admission unchanged: it may queue behind the one
-                # historical order already in flight. Only replacements need
-                # an idle account; the weekly runner stops for new live work.
+                # Retain the original deleted-order recovery budget separately
+                # from the per-account admission check below.
                 state.setdefault('deleted_retry_policy', {'max_retries': config.deleted_order_retry_limit,
                                                          'captured_at': now()})
         try:
@@ -144,6 +148,23 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
             if rejected:
                 raise BlockedRequestError("CAMS policy/cost preflight rejected; saved reason requires inspection") from None
             return False
+        # Recheck under the account/init locks after preflight, before consuming
+        # a retry or persisting a POST intent. Polling an existing ID is allowed.
+        if config.max_active_orders_per_account == 1:
+            try:
+                busy = bool(client.get_jobs(limit=100, status=['accepted', 'running']).json['jobs'])
+            except Exception as error:
+                state.update(phase='retry_wait' if retrying else 'preflight_deferred',
+                             retry_wait_reason='account_metadata_deferred', last_check=now(),
+                             error=safe_error(error, secret))
+                save(state_path, state)
+                return False
+            priority = newer_live_due(config, f'{date}{cycle:02d}', cycle) if config._realtime_config else None
+            if busy or priority:
+                state.update(phase='retry_wait' if retrying else 'preflight_deferred', last_check=now(),
+                             retry_wait_reason='newer_live_due' if priority else 'account_busy')
+                save(state_path, state)
+                return False
         if retrying:
             priority = (newer_live_due(config, f'{date}{cycle:02d}', cycle)
                         if (state.get('failure_diagnostic') or {}).get('kind') == 'mars_runtime_error' else None)
@@ -297,9 +318,9 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                 client, secret = create_client(config.account_for(cycle))
             except Exception:
                 raise ValueError("Unable to initialize CAMS client; check credential file and installed cams extra") from None
-        if require_idle_account:
-            # Only a quarantined historical lane requests this guard. Keep it
-            # under the account lock, and permit polling its own pinned order.
+        if require_idle_account or config.max_active_orders_per_account == 1:
+            # Permit polling this init's pinned order, but never add a second
+            # order behind another init (including a historical one).
             paths = list((folder/'.cams').glob('*/state.json'))
             paths += list((folder/'.cams/hourly/parts').glob('*/state.json'))
             saved = [json.loads(path.read_text()) for path in paths]
@@ -307,7 +328,8 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                      and s.get('phase') not in BLOCKED | {'complete'}}
             try:
                 jobs = client.get_jobs(limit=100, status=['accepted', 'running']).json['jobs']
-                idle = all(job['jobID'] in known for job in jobs)
+                idle = (len(jobs) <= 1 or config.max_active_orders_per_account is None) and all(
+                    job['jobID'] in known for job in jobs)
             except Exception as error:
                 return {'status': 'waiting_for_account', 'date': date, 'cycle': cycle,
                         'reason': 'account_metadata_deferred', 'error': safe_error(error, secret)}
@@ -317,14 +339,14 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
         began = time.monotonic()
         verified_groups = set()
         while True:
-            priority = newer_live_due(config, key, cycle)
+            priority = None if config._realtime_config else newer_live_due(config, key, cycle)
             if priority:
                 return {'status': 'yielded_to_realtime', 'date': date, 'cycle': cycle, 'priority_init': priority}
             pending = None
             for group in GROUPS:
                 if group in verified_groups:
                     continue
-                priority = newer_live_due(config, key, cycle)
+                priority = None if config._realtime_config else newer_live_due(config, key, cycle)
                 if priority:
                     return {'status': 'yielded_to_realtime', 'date': date, 'cycle': cycle,
                             'priority_init': priority}

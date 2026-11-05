@@ -6,7 +6,11 @@ accounts:
     credential_file: /workspace/era5-download/.cdsapirc_zmy
   - name: zhangzomo
     credential_file: /workspace/era5-download/.cdsapirc_zhangzomo
+  - name: zomo
+    credential_file: /workspace/era5-download/.cdsapirc_zomo
 cycle_accounts: {0: zmy, 12: zhangzomo}
+history_accounts: [zmy, zhangzomo, zomo]
+max_active_orders_per_account: 1
 first_init: "2026102100"
 lookback_days: 1
 publish_lag_hours: 10

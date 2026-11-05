@@ -48,18 +48,24 @@ def checked_plan(op):
     return deployment, root, plan
 
 
-def download_tick(op, cycle):
+def download_tick(op, cycle=None, *, account=None, runtime_root=None):
     deployment, root, _ = checked_plan(op)
-    command = ['docker', 'exec', '-e', 'PYTHONDONTWRITEBYTECODE=1', '-w', '/workspace/climate_down',
+    workdir = str(runtime_root) if runtime_root is not None else '/workspace/climate_down'
+    command = ['docker', 'exec', '-e', 'PYTHONDONTWRITEBYTECODE=1']
+    if runtime_root is not None:
+        command += ['-e', 'PYTHONPATH='+workdir+'/src']
+    command += ['-w', workdir,
                'zhangmy-dev', '/workspace/climate_down/.venv/bin/python', '-m', 'climate_download.cams.backfill',
                '--config', 'config/jobs/cams_operational.yaml', '--root', deployment['container_queue_root'],
-               '--plan-sha256', deployment['plan_sha256'], '--cycle', str(cycle)]
+               '--plan-sha256', deployment['plan_sha256']]
+    command += ['--account', account] if account is not None else ['--cycle', str(cycle)]
+    lane = f'account-{account}' if account is not None else f'{cycle:02d}'
     started = now()
     result = subprocess.run(command, capture_output=True, text=True, timeout=1200)
-    (op/f'worker-{cycle:02d}.log').write_text(safe(result.stdout+result.stderr))
-    path = root/f'worker-{cycle:02d}.json'
+    (op/f'worker-{lane}.log').write_text(safe(result.stdout+result.stderr))
+    path = root/f'worker-{lane}.json'
     state = read(path) if path.is_file() else {'status': 'failed', 'reason': 'Container did not save its worker state'}
-    save(op/f'run-{cycle:02d}.json', {'started_at': started, 'finished_at': now(),
+    save(op/f'run-{lane}.json', {'started_at': started, 'finished_at': now(),
                                     'returncode': result.returncode, 'worker': state})
     assert result.returncode in (0, 1) and state.get('status') != 'failed', 'Weekly worker failed; inspect its saved state'
     return state
@@ -214,13 +220,19 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--operation-dir', type=Path, required=True)
     parser.add_argument('--cycle', choices=(0, 12), type=int)
+    parser.add_argument('--account')
+    parser.add_argument('--runtime-root', type=Path)
     parser.add_argument('--accept', action='store_true')
     args = parser.parse_args(argv)
-    if args.accept == (args.cycle is not None):
-        parser.error('Choose either --cycle or --accept')
+    if sum((args.accept, args.cycle is not None, args.account is not None)) != 1:
+        parser.error('Choose one of --cycle, --account or --accept')
+    if args.account is not None and not re.fullmatch(r'[a-zA-Z0-9_-]+', args.account):
+        parser.error('Invalid account name')
+    if args.runtime_root is not None and not args.runtime_root.is_absolute():
+        parser.error('Runtime root must be an absolute container path')
     op = args.operation_dir
     op.mkdir(parents=True, exist_ok=True)
-    kind = 'accept' if args.accept else f'cycle-{args.cycle:02d}'
+    kind = 'accept' if args.accept else f'account-{args.account}' if args.account else f'cycle-{args.cycle:02d}'
     with (op/(kind+'.lock')).open('a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -231,7 +243,9 @@ def main(argv=None):
             print(json.dumps({'status': 'needs_inspection', 'failure_evidence': str(failure)}))
             return 1
         try:
-            result = accept_tick(op) if args.accept else download_tick(op, args.cycle)
+            options = {'runtime_root': args.runtime_root} if args.runtime_root is not None else {}
+            result = (accept_tick(op) if args.accept else download_tick(op, account=args.account, **options)
+                      if args.account is not None else download_tick(op, args.cycle, **options))
         except Exception as error:
             save(failure, {'checked_at': now(), 'error': safe(str(error)), 'type': type(error).__name__})
             return 1
