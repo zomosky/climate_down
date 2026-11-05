@@ -19,7 +19,7 @@ from climate_download.cams.client import create_client
 from climate_download.cams.config import CamsConfig, load_config
 from climate_download.cams.queue_policy import load_policy
 from climate_download.cams.state import digest, now, safe_error, save, signature
-from climate_download.cams.worker import BLOCKED, BlockedRequestError, pending_inits, run_init
+from climate_download.cams.worker import BLOCKED, BlockedRequestError, due_recovery_inits, pending_inits, run_init
 
 
 def make_plan(start: str, end: str, *, authorized_at: str) -> dict:
@@ -98,7 +98,8 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
     lane_account = account if account is not None else operational.account_for(cycle).name
     def live_priority():
         return [key for c in ((0, 12) if pooled else (cycle,))
-                for key in pending_inits(operational, c, dt.datetime.fromisoformat(now()))]
+                for key in pending_inits(operational, c, dt.datetime.fromisoformat(now()))+
+                (due_recovery_inits(operational, c, dt.datetime.fromisoformat(now())) if pooled else [])]
     plan = load_plan(root/'plan.json', expected_sha256)
     weeks = pending_weeks(root, plan)
     if not weeks:

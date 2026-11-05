@@ -30,7 +30,7 @@ def newer_live_due(config: CamsConfig, key: str, cycle: int) -> str | None:
     if config._realtime_config is not None:
         live = config._realtime_config
         at = dt.datetime.fromisoformat(now())
-        pending = [k for c in (0, 12) for k in pending_inits(live, c, at)]
+        pending = [k for c in (0, 12) for k in pending_inits(live, c, at)+due_recovery_inits(live, c, at)]
         return min(pending, default=None)
     if (getattr(config, 'hourly_request_mode', 'bundle') != 'native_constraint_cubes'
             and not getattr(config, 'mars_count_retry_delays_seconds', None)):
@@ -451,4 +451,35 @@ def pending_inits(config: CamsConfig, cycle: int, at) -> list[str]:
         if any(s.get('phase') == 'retry_wait' for s in states):
             continue
         pending.append(key)
+    return pending
+
+
+def due_recovery_inits(config: CamsConfig, cycle: int, at) -> list[str]:
+    """Due, locally verifiable live retries outrank new history within their cap."""
+    pending = []
+    for key in scheduled_inits(config, cycle, at):
+        folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+        if (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
+            continue
+        if config.quarantine_uncertain_submissions and uncertain_groups(folder, key):
+            continue
+        paths = list((folder/'.cams').glob('*/state.json'))+list((folder/'.cams/hourly/parts').glob('*/state.json'))
+        states = [(path, json.loads(path.read_text())) for path in paths]
+        if any(saved.get('phase') in TERMINAL_FAILURES for _, saved in states):
+            continue
+        for path, saved in states:
+            if saved.get('phase') != 'retry_wait':
+                continue
+            try:
+                due = dt.datetime.fromisoformat(saved['retry_due_at'])
+                if due.tzinfo is None or at < due:
+                    continue
+                if (saved.get('failure_diagnostic') or {}).get('kind') == deleted.KIND:
+                    deleted.verify(config, path.parent, saved, json.loads((path.parent/'request.json').read_text()))
+                else:
+                    recovery.verify_before_replacement(config, path.parent, saved)
+            except recovery.EVIDENCE_ERRORS:
+                continue
+            pending.append(key)
+            break
     return pending

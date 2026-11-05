@@ -1,5 +1,6 @@
 """Actual scheduler/worker/locks/native publication, with a fake ADS service."""
 import json
+import datetime as dt
 import os
 from types import SimpleNamespace
 
@@ -84,3 +85,34 @@ def test_three_accounts_restart_without_duplicate_orders_and_publish_native_init
         'three_distinct_init_owners': first, 'maximum_active_orders_per_account': 1,
         'restart_additional_posts': 0, 'published_inits': 3, 'messages_per_init': 5732,
         'files_per_init': 121, 'full_week_not_prematurely_accepted': True, 'manifests': manifests})
+
+
+def test_due_live_retry_wins_but_expired_or_exhausted_recovery_does_not_stall_history(system, monkeypatch):
+    config, clock, client, tmp = system
+    config = config.model_copy(update={'history_accounts': ['mock-account'],
+        'max_active_orders_per_account': 1, 'mars_count_retry_limit': 48,
+        'mars_count_retry_delays_seconds': [1800]*48, 'mars_count_retry_window_seconds': 86400})
+    client.failures = 1
+    started = clock[0]
+    result = worker.run_init(config, '20261027', 0)
+    assert result['status'] == 'recovery_deferred' and len(client.posts) == 1
+    root = tmp/'due-priority-queue'
+    save(root/'plan.json', backfill.make_plan('20260101', '20260921', authorized_at=started.isoformat()))
+    clock[0] = started+dt.timedelta(seconds=1799)
+    assert not worker.due_recovery_inits(config, 0, clock[0])
+    clock[0] += dt.timedelta(seconds=1)
+    assert worker.due_recovery_inits(config, 0, clock[0]) == ['2026102700']
+    assert backfill.tick(config, root, account='mock-account')['status'] == 'waiting_for_realtime'
+    assert not list((root/'assignments').glob('*.json'))
+    folder=config.output_dir/'ec_cams/20261027/00z/.cams'
+    targets=[p for p in folder.rglob('state.json')
+             if json.loads(p.read_text()).get('phase')=='retry_wait' and json.loads(p.read_text()).get('request_id')]
+    assert targets
+    saved={p:p.read_bytes() for p in targets}
+    for p in targets:
+        value=json.loads(p.read_text());value['retry_count']=48;save(p,value)
+    assert not worker.due_recovery_inits(config,0,clock[0])
+    for p,raw in saved.items():p.write_bytes(raw)
+    clock[0]=started+dt.timedelta(seconds=86401)
+    assert not worker.due_recovery_inits(config,0,clock[0])
+    assert len(client.posts)==1
