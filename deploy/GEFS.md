@@ -29,3 +29,9 @@ GRIB 头校验才写 manifest。失败不发布，已下载内容留待下轮续
 回滚：删除仅本任务的 cron 标记块，等待当前任务结束，恢复之前的固定版本配置。
 保留已有数据及 state 文件；不终止其他下载任务。索引巡检应增加本任务 lock_file 到
 `--extra-lock`，避免与发布同时维护同一覆盖索引。
+
+`download_base_url` 可指定 NOAA NOMADS 的近期数据根地址
+`https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod`；默认仍为 S3 存储。
+2026-11-06 服务器实测同一 1 MiB Range：NOMADS 约 5 秒，S3 约 48–65 秒，
+因此该服务器实时任务使用 NOMADS。较旧历史日期应显式使用 S3。
+切换同一 NOAA 数据的端点不改变请求身份，保留已验证成员/时次的断点；下载后仍检查全部 GRIB 身份。

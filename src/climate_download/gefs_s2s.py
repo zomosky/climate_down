@@ -113,6 +113,7 @@ class Plan:
     members: tuple[int, ...]
     steps: tuple[int, ...]
     output_dir: Path
+    base_url: str = HOST
 
     def __post_init__(self):
         if datetime.strptime(self.date, '%Y%m%d').strftime('%Y%m%d') != self.date:
@@ -133,7 +134,7 @@ class Plan:
                     variables=[f[2] for fields in FIELDS.values() for f in fields])
 
     def url(self, member, step, part):
-        return (f'{HOST}/gefs.{self.date}/00/atmos/pgrb2{part}p5/'
+        return (f'{self.base_url.rstrip(chr(47))}/gefs.{self.date}/00/atmos/pgrb2{part}p5/'
                 f'ge{member_tag(member)}.t00z.pgrb2{part}.0p50.f{step:03d}')
 
 
@@ -314,6 +315,7 @@ def add_parser(sub):
     p.add_argument('--steps', default='all', help='all or comma-separated native hours')
     p.add_argument('--output-dir', type=Path, default=Path('output'))
     p.add_argument('--workers', type=int, default=4)
+    p.add_argument('--base-url', default=HOST, help='NOAA HTTP root; S3 archive or NOMADS recent data')
     p.add_argument('--dry-run', action='store_true')
     p.set_defaults(func=main)
 
@@ -321,7 +323,7 @@ def add_parser(sub):
 def main(args):
     members = select_members(args.member_count, args.members)
     steps = STEPS if args.steps == 'all' else tuple(sorted(int(v) for v in args.steps.split(',')))
-    plan = Plan(args.date, members, steps, args.output_dir)
+    plan = Plan(args.date, members, steps, args.output_dir, args.base_url)
     if args.dry_run:
         print(json.dumps({**plan.identity, 'output': str(plan.folder), 'expected_messages': len(members) * sum(len(expected_fields(s)) for s in steps)}, indent=2))
     else:

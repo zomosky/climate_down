@@ -46,7 +46,8 @@ def commands(cfg, date):
             f'{directory}/.venv/bin/python', f'{release}/download/deploy/gefs_run.py',
             '--bounded-exec', '--', *args]
     download = inside('download', [f'{release}/download/.venv/bin/climate_download',
-        'gefs-ens', '--date', date, '--member-count', str(members), '--workers', '4', '--output-dir', root])
+        'gefs-ens', '--date', date, '--member-count', str(members), '--workers', '4', '--output-dir', root,
+        '--base-url', cfg.get('download_base_url', 'https://noaa-gefs-pds.s3.amazonaws.com')])
     restore = inside('climate_restorage', [f'{release}/climate_restorage/.venv/bin/python',
         f'{release}/climate_restorage/deploy/gefs_publish.py', '--manifest', manifest,
         '--output-dir', cfg['zarr_root'], '--member-count', str(members)])

@@ -111,3 +111,11 @@ def test_interrupted_published_repair_withdraws_manifest(tmp_path, monkeypatch):
     assert not manifest.exists()
     monkeypatch.setattr(g, 'atomic_bytes', original)
     assert g.run(plan).exists()
+
+
+def test_noaa_mirror_keeps_resume_identity(tmp_path):
+    from climate_download.gefs_s2s import Plan
+    a=Plan('20261105',(0,1),(0,3),tmp_path)
+    b=Plan('20261105',(0,1),(0,3),tmp_path,'https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/')
+    assert a.identity == b.identity
+    assert b.url(1,3,'a') == 'https://nomads.ncep.noaa.gov/pub/data/nccf/com/gens/prod/gefs.20261105/00/atmos/pgrb2ap5/gep01.t00z.pgrb2a.0p50.f003'
