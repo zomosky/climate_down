@@ -21,7 +21,7 @@ def pool(tmp_path, monkeypatch):
     plan = backfill.make_plan('20260101', '20260921', authorized_at='2026-11-05T10:00:00Z')
     root = tmp_path/'queue'
     save(root/'plan.json', plan)
-    monkeypatch.setattr(backfill, 'pending_inits', lambda *a: [])
+    monkeypatch.setattr(worker, 'pending_inits', lambda *a: [])
     monkeypatch.setattr(backfill.shutil, 'disk_usage', lambda *a: (0, 0, 10**13))
     clients = {n: SimpleNamespace(get_jobs=lambda **kw: SimpleNamespace(json={'jobs': []}))
                for n in ('a', 'b', 'c')}
@@ -106,12 +106,27 @@ def test_unknown_or_multiple_active_orders_block_new_claims(pool, monkeypatch, j
     assert not list((root/'assignments').glob('*.json'))
 
 
-def test_either_realtime_cycle_prevents_third_account_claim(pool, monkeypatch):
+@pytest.mark.parametrize(('live_cycle', 'live_account'), [(0, 'a'), (12, 'b')])
+@pytest.mark.parametrize('priority_check', ['pending_inits', 'due_recovery_inits'])
+def test_realtime_only_blocks_the_shared_history_account(pool, monkeypatch, live_cycle, live_account, priority_check):
     cfg, _, root, _ = pool
-    monkeypatch.setattr(backfill, 'pending_inits', lambda config, cycle, at: ['2026110500'] if cycle == 0 else [])
-    monkeypatch.setattr(backfill, 'run_init', lambda *a, **kw: pytest.fail('realtime wins'))
-    assert backfill.tick(cfg, root, account='c')['status'] == 'waiting_for_realtime'
+    key = f'20261105{live_cycle:02d}'
+    def pending(config, cycle, at):
+        return [key] if cycle == live_cycle else []
+    monkeypatch.setattr(worker, priority_check, pending)
+    seen = []
+    def run(scoped, date, cycle, **kwargs):
+        seen.append(scoped.account_for(cycle).name)
+        return {'status': 'pending'}
+    monkeypatch.setattr(backfill, 'run_init', run)
+    blocked = backfill.tick(cfg, root, account=live_account)
+    assert blocked['status'] == 'waiting_for_realtime' and blocked['priority_inits'] == [key]
     assert not list((root/'assignments').glob('*.json'))
+    other = [account for account in cfg.history_accounts if account != live_account]
+    for account in other:
+        assert backfill.tick(cfg, root, account=account)['status'] == 'pending'
+    assert seen == other
+    assert len(list((root/'assignments').glob('*.json'))) == 2
 
 
 def test_metadata_failure_cannot_create_an_assignment(pool, monkeypatch):
@@ -198,17 +213,25 @@ def test_post_gate_rechecks_active_orders_after_preflight(pool, monkeypatch):
     assert not saved.get('request_id') and not saved.get('retry_count')
 
 
-def test_new_realtime_after_preflight_blocks_historical_post(pool, monkeypatch):
+@pytest.mark.parametrize(('history_account', 'allowed'), [('a', False), ('b', True), ('c', True)])
+def test_new_realtime_after_preflight_only_blocks_posts_on_its_account(pool, monkeypatch, history_account, allowed):
     cfg, _, _, _ = pool
-    scoped = cfg.model_copy(update={'first_init': '2026010100'})
+    scoped = cfg.model_copy(update={'first_init': '2026010100', 'cycle_accounts': {0: 'a', 12: history_account}})
     scoped._realtime_config = cfg
-    client = SimpleNamespace(submit=lambda *a: pytest.fail('realtime arrived'),
+    posts = []
+    client = SimpleNamespace(submit=lambda *a: posts.append(a) or SimpleNamespace(request_id='history'),
+                             get_remote=lambda rid: SimpleNamespace(json={'status': 'accepted'}),
                              get_jobs=lambda **kw: SimpleNamespace(json={'jobs': []}))
     monkeypatch.setattr(worker, 'preflight', lambda *a: {'passed': True})
     monkeypatch.setattr(worker, 'pending_inits', lambda config, cycle, at: ['2026110500'] if cycle == 0 else [])
     folder = cfg.output_dir/'group'
     assert not worker.group_tick(scoped, folder, '20260915', 12, 'hourly', client, '')
-    assert json.loads((folder/'state.json').read_text())['retry_wait_reason'] == 'newer_live_due'
+    saved = json.loads((folder/'state.json').read_text())
+    assert len(posts) == int(allowed)
+    if allowed:
+        assert saved['phase'] == 'waiting_for_remote' and saved['request_id'] == 'history'
+    else:
+        assert saved['retry_wait_reason'] == 'newer_live_due' and 'request_id' not in saved
 
 
 def test_busy_account_does_not_consume_a_replacement(pool, monkeypatch):

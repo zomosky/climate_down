@@ -28,9 +28,8 @@ class BlockedRequestError(ValueError):
 def newer_live_due(config: CamsConfig, key: str, cycle: int) -> str | None:
     """Yield an older recovery between bounded transfers when live data is due."""
     if config._realtime_config is not None:
-        live = config._realtime_config
         at = dt.datetime.fromisoformat(now())
-        pending = [k for c in (0, 12) for k in pending_inits(live, c, at)+due_recovery_inits(live, c, at)]
+        pending = live_priority_inits(config._realtime_config, config.account_for(cycle).name, at)
         return min(pending, default=None)
     if (getattr(config, 'hourly_request_mode', 'bundle') != 'native_constraint_cubes'
             and not getattr(config, 'mars_count_retry_delays_seconds', None)):
@@ -483,3 +482,9 @@ def due_recovery_inits(config: CamsConfig, cycle: int, at) -> list[str]:
             pending.append(key)
             break
     return pending
+
+
+def live_priority_inits(config: CamsConfig, account: str, at: dt.datetime) -> list[str]:
+    """Only live cycles sharing this ADS account can delay its historical work."""
+    return [key for cycle in (0, 12) if config.cycle_accounts[cycle] == account
+            for key in pending_inits(config, cycle, at) + due_recovery_inits(config, cycle, at)]

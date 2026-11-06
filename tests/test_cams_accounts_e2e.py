@@ -13,7 +13,7 @@ from test_cams_staged_e2e import system, report
 def test_three_accounts_restart_without_duplicate_orders_and_publish_native_inits(system, monkeypatch):
     original, clock, seed, tmp = system
     settings = original.model_dump()
-    settings.update(first_init='2026102100',
+    settings.update(first_init='2026102712', max_run_seconds=0, hourly_request_mode='bundle',
                     accounts=[{'name': n, 'credential_file': tmp/n} for n in ('a', 'b', 'c')],
                     cycle_accounts={0: 'a', 12: 'b'}, history_accounts=['a', 'b', 'c'],
                     max_active_orders_per_account=1)
@@ -21,8 +21,6 @@ def test_three_accounts_restart_without_duplicate_orders_and_publish_native_init
     plan = backfill.make_plan('20260101', '20260921', authorized_at='2026-11-05T10:00:00Z')
     root = tmp/'three-account-queue'
     save(root/'plan.json', plan)
-    monkeypatch.setattr(backfill, 'pending_inits', lambda *a: [])
-    monkeypatch.setattr(worker, 'pending_inits', lambda *a: [])
     clients, finish, trace = {}, {}, []
     for name in ('a', 'b', 'c'):
         client = type(seed)()
@@ -61,13 +59,23 @@ def test_three_accounts_restart_without_duplicate_orders_and_publish_native_init
         assert result['init'] == first[name][0]
     assert sum(len(c.posts) for c in clients.values()) == 3
 
-    # Finish the existing first orders, then the actual worker builds all groups,
-    # validates the native 52-field/5732-message union and publishes 121 files.
+    # The 12 UTC live init is now due on b. History on the other accounts still
+    # resumes the first receipts, submits remaining groups and publishes.
+    clock[0] += dt.timedelta(hours=12)
+    blocked = backfill.tick(config, root, account='b')
+    assert blocked['status'] == 'waiting_for_realtime' and blocked['priority_inits'] == ['2026102712']
+    trace.append(blocked)
     manifests = []
-    for name, client in clients.items():
+    for name in ('a', 'c', 'b'):
+        client = clients[name]
         finish[name] = True
         for remote in client.remotes.values():
             remote.json['status'] = 'successful'
+        if name == 'b':
+            # Once b's existing ADS order has finished, live uses the slot first.
+            live = worker.run_init(config, '20261027', 12, client=client)
+            assert live['status'] == 'complete'
+            trace.append(live)
         result = backfill.tick(config, root, account=name)
         trace.append({'account': name, **result})
         assert result['status'] == 'complete' and result['init'] == first[name][0]
@@ -76,15 +84,17 @@ def test_three_accounts_restart_without_duplicate_orders_and_publish_native_init
         manifest = json.loads(path.read_text())
         assert len(manifest['files']) == 121
         assert sum(f['records_selected'] for f in manifest['files']) == 5732
-        assert client.posts[0]['request_id'] == first[name][1]
-        assert len(client.posts) == 3 and not client.get_jobs().json['jobs']
+        history_posts = [post for post in client.posts if post['date'] == client.posts[0]['date']]
+        assert history_posts[0]['request_id'] == first[name][1]
+        assert len(history_posts) == 3 and not client.get_jobs().json['jobs']
         manifests.append(str(path))
     assert backfill.active_week(root, plan) == plan['weeks'][0]  # 3/14 is not acceptance.
     seed.posts = [dict(account=name, **post) for name, client in clients.items() for post in client.posts]
     report('three-accounts', config, seed, trace, {
         'three_distinct_init_owners': first, 'maximum_active_orders_per_account': 1,
         'restart_additional_posts': 0, 'published_inits': 3, 'messages_per_init': 5732,
-        'files_per_init': 121, 'full_week_not_prematurely_accepted': True, 'manifests': manifests})
+        'files_per_init': 121, 'full_week_not_prematurely_accepted': True, 'manifests': manifests,
+        'other_accounts_completed_while_live_was_due': ['a', 'c'], 'live_preempted_shared_account': 'b'})
 
 
 def test_due_live_retry_wins_but_expired_or_exhausted_recovery_does_not_stall_history(system, monkeypatch):
