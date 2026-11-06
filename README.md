@@ -1,5 +1,7 @@
 # climate_download
 
+GEFS 命名已统一为 `gefs-ens`（成员预测）和 `gefs-ctrl`（控制预测）。旧 `gefs-s2s` / `gefs-s2s-control` 产品仍可读取；同时存在新旧名称时自动目录优先展示新名称。下载命令 `gefs-s2s` 保留为 `gefs-ens` 的兼容别名，新产物使用新名称。
+
 ECCAMS 的原订单续接、提交超时隔离、一次性授权恢复和按周回补见 [CAMS 运维说明](docs/CAMS.md)。
 
 ENS 事件概率新增 `ifs-ens-probabilities`（5 个降水/阵风字段）与
@@ -1032,3 +1034,29 @@ print(outcome.succeeded, outcome.failed, outcome.report_path)
 ## CAMS 正式接入
 
 `ec_cams` 使用独立 `climate_download cams` ADS 子命令，每起报完整保留52变量、0–120小时原生时效，完整校验后发布标准manifest。新实时逐小时组按ADS原生约束固定为互不重叠的请求块，已有订单保留原ID续传；每块原始消息与完整合并结果均须通过校验。确认的MARS字段计数错误，以及明确启用的空详细诊断通用MARS失败，每30分钟尝试恢复，同一起报自首次确认失败起最多持续24小时、最多追加48次，全部分片共享窗口和次数，完整保留失败证据，等待期间释放账号并优先处理新实时。明确已删除的订单另有每起报一次的同参数恢复，保留单个缺口并继续其他周。变量表、断点恢复、241定时入口及验收说明见 [CAMS.md](docs/CAMS.md)。实时生产下限为2026102100；另有按授权范围独立运行的历史队列，按周向前回补至2026年1月1日。默认整周验收后进入前一周；明确的运行授权允许暂停的周让出下载机会，缺口仍保持未验收。
+
+## GEFS 次季节成员预测（本地接入）
+
+`gefs-ens` 是独立的 NOAA GEFS 00 UTC、0.5°、35 天成员子链；不会更改
+原 `gfs-0p25`。前 240 小时每 3 小时、之后每 6 小时，共 181 个时效。
+下载 15 个气象字段，默认 c00 控制成员及 p01–p04 四个扰动成员。
+通过 NOAA 公共对象存储的索引与条件字节范围请求直接获取，不使用 ECDS 排队。
+
+```bash
+# 只看计划（不需要下载 extra，也不连接网络）
+uv run climate_download gefs-ens --date 20261029 --member-count 5 --dry-run
+# 正式下载；解码校验依赖 viz extra。output-dir 由使用者指定。
+uv run --extra viz climate_download gefs-ens --date 20261029 --member-count 5 --output-dir ../climate_data
+# 明确选择成员（不可与 member-count 同用）
+uv run --extra viz climate_download gefs-ens --date 20261029 --members c00,p02,p07 --output-dir output/selected
+```
+
+此子链使用独立请求身份与文件锁，避免同一输出目录内不同成员/时效的续传混用。
+改变已有起报的选择需另指定输出目录。每个成员/时效缓存均校验 SHA256、GRIB
+字段/成员/时效/网格头，失败可原命令续传；全部请求完成后才发布标准 per-init
+manifest。它仍由 `climate_restore` 的 `gefs-ens` adapter 消费。控制产品通过
+重整端 `export-gefs-control` 生成，读取源名为 `gefs-ctrl`。
+
+本地接入不附带任何生产定时任务；需要的日期必须已在 NOAA 发布。
+
+GEFS 自动下载及完整产品发布调度见 [deploy/GEFS.md](deploy/GEFS.md)。

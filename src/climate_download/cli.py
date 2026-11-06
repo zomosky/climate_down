@@ -210,6 +210,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_cams.add_argument("--once", action="store_true", help="one poll/transfer pass, then let cron resume")
     p_cams.set_defaults(func=cmd_cams)
 
+    from climate_download.gefs_s2s import add_parser as add_gefs_parser
+    add_gefs_parser(sub)
+
     return parser
 
 
