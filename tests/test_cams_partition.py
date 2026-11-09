@@ -79,7 +79,7 @@ def test_modified_saved_plan_is_rejected(problem):
     with pytest.raises(ValueError):validate_plan(plan,'20261027',0)
 
 
-def test_grib_subset_rejects_missing_extra_and_duplicate_native_identities(tmp_path,monkeypatch):
+def test_grib_subset_rejects_missing_extra_and_conflicting_native_identities(tmp_path,monkeypatch):
     from climate_download.cams import grib
     from test_cams import header
     variable=next(v for v in GROUPS['hourly'] if v.param_id==167)
@@ -89,7 +89,7 @@ def test_grib_subset_rejects_missing_extra_and_duplicate_native_identities(tmp_p
     def write():path.write_bytes(b''.join(message for _,message in messages))
     write()
     assert grib.validate([path],'20261021',0,(variable,),native_leads=(0,6,12))['messages']==3
-    for bad in ([messages[0],messages[1]],[*messages,messages[0]],
+    for bad in ([messages[0],messages[1]],[*messages,(messages[0][0],b'GRIBother7777')],
                 [*messages,(header(variable,1),b'GRIBbytes7777')]):
         original=messages[:];messages[:]=bad;write()
         with pytest.raises(ValueError):grib.validate([path],'20261021',0,(variable,),native_leads=(0,6,12))

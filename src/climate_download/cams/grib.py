@@ -88,7 +88,8 @@ def validate(paths: Iterable[Path], date: str, cycle: int,
             or any(not set(native_leads) <= set(v.leads) for v in variables)):
         raise ValueError('Invalid CAMS native subset leads')
     expected = {(v.param_id, h) for v in variables for h in (v.leads if native_leads is None else native_leads)}
-    seen, records, originals, handles, split_hashes = set(), [], [], {}, {}
+    seen, records, originals, handles, split_hashes = {}, [], [], {}, {}
+    duplicates, source_messages = [], 0
     counts: Counter = Counter()
     try:
         for path in paths:
@@ -98,14 +99,24 @@ def validate(paths: Iterable[Path], date: str, cycle: int,
                 p, h = check_header(header, date, cycle, by_param)
                 if (p, h) not in expected:
                     raise ValueError(f'Unexpected CAMS piece parameter/native lead {(p, h)}')
-                if (p, h) in seen:
-                    raise ValueError(f"Duplicate CAMS parameter/native lead {(p, h)}")
-                seen.add((p, h))
                 size += len(message)
                 raw_messages_hash.update(message)
+                fingerprint = hashlib.sha256(message).hexdigest()
+                source_index = source_messages
+                source_messages += 1
+                if (p, h) in seen:
+                    index, original_path = seen[p, h]
+                    original = records[index]
+                    if original_path != path or original['sha256'] != fingerprint or original['bytes'] != len(message):
+                        raise ValueError(f"Conflicting or cross-input CAMS duplicate {(p, h)}")
+                    duplicates.append({'param_id': p, 'lead_hours': h, 'bytes': len(message),
+                                       'sha256': fingerprint, 'source_message_index': source_index,
+                                       'original_record_index': index})
+                    continue
+                seen[p, h] = len(records), path
                 counts[h] += 1
                 records.append({"param_id": p, "lead_hours": h, "bytes": len(message),
-                                "sha256": hashlib.sha256(message).hexdigest(),
+                                "sha256": fingerprint,
                                 "source_step_type": header["stepType"], "start_step": header["startStep"],
                                 "source_missing_values": header["numberOfMissing"]})
                 if split_dir is not None:
@@ -120,8 +131,9 @@ def validate(paths: Iterable[Path], date: str, cycle: int,
             if raw_messages_hash.hexdigest() != raw_sha:
                 raise ValueError("Decoded message bytes differ from the original raw GRIB bytes")
             originals.append({"path": str(path), "size_bytes": size, "sha256": raw_sha})
-        if seen != expected:
-            raise ValueError(f"Missing {len(expected - seen)} native identities: {sorted(expected - seen)[:5]}")
+        if set(seen) != expected:
+            missing = expected - set(seen)
+            raise ValueError(f"Missing {len(missing)} native identities: {sorted(missing)[:5]}")
     finally:
         for stream in handles.values():
             stream.close()
@@ -129,6 +141,7 @@ def validate(paths: Iterable[Path], date: str, cycle: int,
         if digest(split_dir / f"f{h:03d}.subset.grib2.part") != expected_hash.hexdigest():
             raise ValueError("Split GRIB bytes differ from the original-message stream")
     return {"passed": True, "date": date, "cycle": cycle, "messages": len(seen),
+            "source_messages": source_messages, "identical_duplicates": duplicates,
             "all_original_bytes_accounted_for": True, "originals": originals,
             "records": records, "messages_per_step": dict(sorted(counts.items())),
             "split_sha256": {str(h): s.hexdigest() for h, s in sorted(split_hashes.items())},

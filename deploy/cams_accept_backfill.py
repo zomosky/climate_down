@@ -86,6 +86,48 @@ def request_directory(folder, request):
     return group/'parts'/part
 
 
+def original_stream_hashes(folder, manifest, receipt):
+    """Independently account for every source message and each exact duplicate."""
+    import eccodes as ec
+
+    split_hashes = {h: hashlib.sha256() for h in range(121)}
+    seen, duplicates = {}, []
+    position, source_position = 0, 0
+    for request in manifest['original_requests']:
+        raw = request_directory(folder, request)/'download.grib'
+        original_hash = hashlib.sha256()
+        with raw.open('rb') as stream:
+            while (handle := ec.codes_grib_new_from_file(stream)) is not None:
+                try:
+                    p, h = int(ec.codes_get(handle, 'paramId')), int(ec.codes_get(handle, 'endStep'))
+                    payload = ec.codes_get_message(handle)
+                    fingerprint = hashlib.sha256(payload).hexdigest()
+                    original_hash.update(payload)
+                    if (p, h) in seen:
+                        index, original_path = seen[p, h]
+                        record = receipt['records'][index]
+                        assert original_path == raw and record['sha256'] == fingerprint
+                        assert record['bytes'] == len(payload)
+                        duplicates.append({'param_id': p, 'lead_hours': h, 'bytes': len(payload),
+                                           'sha256': fingerprint, 'source_message_index': source_position,
+                                           'original_record_index': index})
+                    else:
+                        record = receipt['records'][position]
+                        assert (record['param_id'], record['lead_hours']) == (p, h)
+                        assert record['sha256'] == fingerprint and record['bytes'] == len(payload)
+                        seen[p, h] = position, raw
+                        position += 1
+                        split_hashes[h].update(payload)
+                    source_position += 1
+                finally:
+                    ec.codes_release(handle)
+        assert original_hash.hexdigest() == digest(raw)
+    assert position == receipt['messages'] == len(receipt['records'])
+    assert source_position == receipt.get('source_messages', receipt['messages'])
+    assert duplicates == receipt.get('identical_duplicates', [])
+    return split_hashes
+
+
 def check_raw(date, cycle):
     import cfgrib
 
@@ -109,27 +151,7 @@ def check_raw(date, cycle):
     assert seen == expected and len(receipt["records"]) == len(seen) == 5732
     # Independently hash the literal original-message streams into each step;
     # metadata/value equality alone does not establish byte-preserving splitting.
-    import eccodes as ec
-    split_hashes = {h: hashlib.sha256() for h in range(121)}
-    position = 0
-    for request in manifest["original_requests"]:
-        raw = request_directory(folder, request) / 'download.grib'
-        original_hash = hashlib.sha256()
-        with raw.open("rb") as stream:
-            while (handle := ec.codes_grib_new_from_file(stream)) is not None:
-                try:
-                    p, h = int(ec.codes_get(handle, "paramId")), int(ec.codes_get(handle, "endStep"))
-                    payload = ec.codes_get_message(handle)
-                    record = receipt["records"][position]
-                    position += 1
-                    assert (record["param_id"], record["lead_hours"]) == (p, h)
-                    assert record["sha256"] == hashlib.sha256(payload).hexdigest()
-                    original_hash.update(payload)
-                    split_hashes[h].update(payload)
-                finally:
-                    ec.codes_release(handle)
-        assert original_hash.hexdigest() == digest(raw)
-    assert position == 5732
+    split_hashes = original_stream_hashes(folder, manifest, receipt)
     for item in manifest["files"]:
         assert split_hashes[item["step_hours"]].hexdigest() == item["sha256"]
     init = np.datetime64(dt.datetime.strptime(date, "%Y%m%d").replace(hour=cycle), "ns")
@@ -191,6 +213,8 @@ def check_raw(date, cycle):
                     ds.close()
     assert len(proof) == 52
     result = {"passed": True, "date": date, "cycle": cycle, "messages": 5732, "variables": proof,
+              "source_messages": receipt.get('source_messages', receipt['messages']),
+              "identical_duplicate_messages": len(receipt.get('identical_duplicates', [])),
               "source_negative_increments": negatives, "raw_sha256_and_split_bytes_verified": True,
               "native_times_zero_shift": True, "zarr_exact": True,
               "seconds": round(time.monotonic() - started, 3)}

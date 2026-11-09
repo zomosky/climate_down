@@ -64,6 +64,59 @@ def _submit_once(folder, state, request, client, secret):
     save(folder/'state.json', state)
 
 
+def _resume_duplicate_validation(folder: Path, state: dict, request: dict) -> None:
+    """Archive a legacy duplicate failure before revalidating the same raw bytes."""
+    part = folder/'download.grib.part'
+    expected = state.get('expected_bytes')
+    if (not state.get('request_id') or state.get('remote_status') != 'successful'
+            or not state.get('download_finished_at') or not isinstance(expected, int) or expected <= 0
+            or state.get('partial_bytes') != expected or not part.is_file() or part.stat().st_size != expected
+            or signature(json.loads((folder/'request.json').read_text())) != signature(request)):
+        raise BlockedRequestError('Duplicate validation recovery requires its complete pinned original')
+    archive = folder/'validation_failures/identical-duplicates-v1'
+    archive.mkdir(parents=True, exist_ok=True)
+    for name in ('state.json', 'request.json'):
+        source, target = folder/name, archive/name
+        original = source.read_bytes()
+        if target.exists():
+            if target.read_bytes() != original:
+                raise BlockedRequestError('Retained duplicate failure archive differs')
+        else:
+            temporary = target.with_suffix('.json.tmp')
+            temporary.write_bytes(original)
+            temporary.replace(target)
+    state.update(phase='validating', duplicate_validation_recovery={
+        'archive': str(archive.relative_to(folder)), 'resumed_at': now(),
+        'failed_state_sha256': digest(archive/'state.json'), 'original_raw_sha256': digest(part),
+        'original_raw_bytes': expected, 'request_id': state['request_id']})
+    save(folder/'state.json', state)
+
+
+def _complete_group(folder: Path, state: dict, date: str, cycle: int, variables, secret: str,
+                    *, native_leads=None) -> bool:
+    target, part = folder/'download.grib', folder/'download.grib.part'
+    original = state.get('duplicate_validation_recovery')
+    if original and not part.exists() and target.is_file():
+        part = target
+    try:
+        options = {'native_leads': native_leads} if native_leads is not None else {}
+        validation = validate([part], date, cycle, variables, **options)
+        if original and digest(part) != original['original_raw_sha256']:
+            raise ValueError('Recovered CAMS raw differs from its archived failure identity')
+        save(folder/'validation.json', validation)
+    except Exception as error:
+        state.update(phase='validation_failed', error=safe_error(error, secret))
+        save(folder/'state.json', state)
+        raise BlockedRequestError('CAMS GRIB validation failed; raw bytes retained') from None
+    if part != target:
+        part.replace(target)
+    state.update(phase='complete', completed_at=now(), sha256=digest(target),
+                 bytes=target.stat().st_size, messages=validation['messages'])
+    state.pop('error', None)
+    save(folder/'state.json', state)
+    return True
+
+
 def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: str, client, secret: str,
                *, request: dict | None = None) -> bool:
     account = config.account_for(cycle).name
@@ -81,6 +134,12 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         raise BlockedRequestError('Retained CAMS init/group identity requires inspection')
     for key, value in (('date', date), ('cycle', cycle), ('group', group)):
         state.setdefault(key, value)
+    if (state['phase'] == 'validation_failed'
+            and (state.get('error') or {}).get('message', '').startswith('Duplicate CAMS parameter/native lead ')):
+        _resume_duplicate_validation(folder, state, request)
+    native_leads = tuple(int(h) for h in request['leadtime_hour']) if subset else None
+    if state['phase'] == 'validating' and state.get('duplicate_validation_recovery'):
+        return _complete_group(folder, state, date, cycle, variables, secret, native_leads=native_leads)
     if (config.deleted_order_retry_limit and state.get('phase') == 'remote_failed'
             and not state.get('deleted_recovery') and deleted.saved_deleted(state)):
         try:
@@ -272,20 +331,7 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         return False
     state.update(phase="validating", download_finished_at=now())
     save(state_path, state)
-    try:
-        options = {'native_leads': tuple(int(h) for h in request['leadtime_hour'])} if subset else {}
-        validation = validate([part], date, cycle, variables, **options)
-        save(folder / "validation.json", validation)
-    except Exception as error:
-        state.update(phase="validation_failed", error=safe_error(error, secret))
-        save(state_path, state)
-        raise BlockedRequestError("CAMS GRIB validation failed; raw bytes retained") from None
-    part.replace(target)
-    state.update(phase="complete", completed_at=now(), sha256=digest(target),
-                 bytes=target.stat().st_size, messages=validation["messages"])
-    state.pop("error", None)
-    save(state_path, state)
-    return True
+    return _complete_group(folder, state, date, cycle, variables, secret, native_leads=native_leads)
 
 
 def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: str = "",

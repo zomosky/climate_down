@@ -115,7 +115,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
                    or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
         raise ValueError('Weekly recovery authorization differs from operational configuration')
     state = {'checked_at': now(), 'cycle': cycle, 'account': lane_account, 'week': weeks[0]['id'], 'blocked': [],
-             'deferred': [], 'deferred_weeks': []}
+             'deferred': [], 'deferred_weeks': [], 'awaiting_acceptance': []}
     priority = live_priority()
     if priority:
         return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
@@ -255,8 +255,14 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
         if (policy and paused) or (pooled and active and active not in week['inits']):
             state['deferred_weeks'].append(week['id'])
             continue
+        if pooled and policy and all((config.output_dir/SOURCE/key[:8]/(key[8:]+'z')/
+                           f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file() for key in week['inits']):
+            state['awaiting_acceptance'].append(week['id'])
+            continue
         return {**state, 'status': 'needs_inspection' if state['blocked'] else 'waiting_for_week_acceptance'}
-    return {**state, 'status': 'waiting_for_recovery' if state['deferred'] else 'needs_inspection'}
+    status = ('needs_inspection' if state['blocked'] else 'waiting_for_recovery' if state['deferred']
+              else 'waiting_for_week_acceptance')
+    return {**state, 'status': status}
 
 
 def main(argv=None):

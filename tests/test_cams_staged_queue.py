@@ -1,6 +1,7 @@
 """Paused recovery may free a weekly lane, never manufacture an accepted week."""
 import datetime as dt
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -88,6 +89,38 @@ def test_a_prior_paused_week_does_not_remove_the_next_normal_week_barrier(setup,
     monkeypatch.setattr(backfill,'run_init',run)
     result=backfill.tick(config,root,0)
     assert result['week']==plan['weeks'][1]['id'] and result['status']=='waiting_for_week_acceptance'
+
+
+@pytest.mark.parametrize('authorized', [False, True])
+@pytest.mark.parametrize('pooled', [False, True])
+def test_fully_downloaded_week_can_be_accepted_while_authorized_history_continues(setup, monkeypatch, authorized, pooled):
+    config, plan, root = prepare(setup, monkeypatch)
+    if pooled:
+        config = config.model_copy(update={'history_accounts': ['a'], 'max_active_orders_per_account': 1})
+        monkeypatch.setattr(backfill, 'live_priority_inits', lambda *args: [])
+        client = SimpleNamespace(get_jobs=lambda **kwargs: SimpleNamespace(json={'jobs': []}))
+        monkeypatch.setattr(backfill, 'create_client', lambda account: (client, ''))
+    if authorized:
+        enable(config, root, plan)
+    first, second = plan['weeks'][:2]
+    for key in first['inits']:
+        save(config.output_dir/'ec_cams'/key[:8]/(key[8:]+'z')/
+             f'{key[:8]}_{key[8:]}z_ec_cams.manifest.json', {})
+    calls = []
+    def run(cfg, date, cycle, **kwargs):
+        calls.append(date+f'{cycle:02d}')
+        return {'status': 'pending', 'date': date, 'cycle': cycle}
+    monkeypatch.setattr(backfill, 'run_init', run)
+    before = digest(root/'plan.json')
+    result = backfill.tick(config, root, 0)
+    if authorized and pooled:
+        assert result['status'] == 'pending' and result['init'] == second['inits'][0]
+        assert result['awaiting_acceptance'] == [first['id']]
+        assert calls == [second['inits'][0]]
+    else:
+        assert result['status'] == 'waiting_for_week_acceptance' and not calls
+    assert not (root/'weeks'/first['id']/'assessment.json').exists()
+    assert digest(root/'plan.json') == before
 
 
 @pytest.mark.parametrize('field,value',[('plan_sha256','a'*64),('authorized_at',''),
