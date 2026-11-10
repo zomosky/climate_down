@@ -1,6 +1,7 @@
 """Durable, account-locked worker for exactly one full CAMS init at a time."""
 from __future__ import annotations
 
+from contextlib import ExitStack
 import datetime as dt
 import fcntl
 import json
@@ -19,6 +20,8 @@ from climate_download.cams.submission import uncertain_groups
 
 BLOCKED = {"submitting", "submission_uncertain", "remote_failed", "validation_failed", "preflight_rejected"}
 TERMINAL_FAILURES = {"remote_failed", "validation_failed", "preflight_rejected"}
+DRAINABLE = {'submitted', 'waiting_for_remote', 'downloading', 'transfer_deferred', 'validating',
+             'partitioned', 'complete'}
 
 
 class BlockedRequestError(ValueError):
@@ -117,14 +120,54 @@ def _complete_group(folder: Path, state: dict, date: str, cycle: int, variables,
     return True
 
 
+def _download_successful_group(config, folder, state, date, cycle, variables, remote, secret, native_leads):
+    state_path, part = folder/'state.json', folder/'download.grib.part'
+    state.setdefault('ready_observed_at', now())
+    state.setdefault('first_download_started_at', now())
+    state.update(phase='downloading')
+    save(state_path, state)
+    try:
+        receipt, done = transfer(remote, part, config, expected_bytes=state.get('expected_bytes'))
+    except RangeIdentityError as error:
+        state.update(phase='validation_failed', last_transfer_check=now(), error=safe_error(error, secret))
+        save(state_path, state)
+        raise BlockedRequestError('CAMS range/object validation failed; original bytes retained') from None
+    except Exception as error:
+        import subprocess
+        import requests
+
+        code = getattr(getattr(error, 'response', None), 'status_code', None)
+        transient = (isinstance(error, (requests.Timeout, requests.ConnectionError,
+                                       requests.exceptions.ChunkedEncodingError, subprocess.TimeoutExpired))
+                     or code in (408, 425, 429) or isinstance(code, int) and 500 <= code < 600)
+        state.update(last_transfer_check=now(), error=safe_error(error, secret))
+        if transient:
+            state.update(phase='transfer_deferred', transfer_deferred_count=state.get('transfer_deferred_count', 0)+1)
+        save(state_path, state)
+        if transient:
+            return False
+        raise ValueError('CAMS transfer failed; same request and partial retained') from None
+    state.setdefault('transfer_attempts', []).append(receipt)
+    state.update(last_transfer_check=now(), partial_bytes=receipt['partial_bytes'],
+                 expected_bytes=receipt['expected_bytes'])
+    if not done:
+        save(state_path, state)
+        return False
+    state.update(phase='validating', download_finished_at=now())
+    save(state_path, state)
+    return _complete_group(folder, state, date, cycle, variables, secret, native_leads=native_leads)
+
+
 def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: str, client, secret: str,
-               *, request: dict | None = None) -> bool:
+               *, request: dict | None = None, completed_only: bool = False) -> bool:
     account = config.account_for(cycle).name
     subset = request is not None
     request = request_for(date, cycle, group) if request is None else request
     variables = request_variables(request, date, cycle, group)
-    folder.mkdir(parents=True, exist_ok=True)
     state_path = folder / "state.json"
+    if completed_only and not state_path.is_file():
+        return False
+    folder.mkdir(parents=True, exist_ok=True)
     state = json.loads(state_path.read_text()) if state_path.exists() else {
         "phase": "prepared", "account": account, "dataset": DATASET, "created_at": now(),
         "request_sha256": signature(request), "group": group, "date": date, "cycle": cycle}
@@ -134,10 +177,34 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         raise BlockedRequestError('Retained CAMS init/group identity requires inspection')
     for key, value in (('date', date), ('cycle', cycle), ('group', group)):
         state.setdefault(key, value)
+    native_leads = tuple(int(h) for h in request['leadtime_hour']) if subset else None
+    if completed_only:
+        if state['phase'] not in DRAINABLE:
+            return False
+        if state['phase'] == 'complete':
+            if not (folder/'download.grib').is_file() or digest(folder/'download.grib') != state['sha256']:
+                raise ValueError('Completed raw CAMS group checksum mismatch')
+            return True
+        if not state.get('request_id'):
+            return False
+        try:
+            remote = client.get_remote(state['request_id'])
+            reply = remote.json
+        except Exception:
+            return False
+        if reply['status'] != 'successful':
+            return False
+        original = folder/'request.json'
+        if not original.is_file() or signature(json.loads(original.read_text())) != signature(request):
+            raise BlockedRequestError('Retained historical request differs from its pinned identity')
+        if signature(recovery._remote_request(reply)) != signature(request):
+            raise BlockedRequestError('Successful ADS order differs from the pinned historical request')
+        state.update(last_check=now(), remote_status='successful',
+                     server_timestamps={k: reply.get(k) for k in ('created', 'started', 'finished', 'updated')})
+        return _download_successful_group(config, folder, state, date, cycle, variables, remote, secret, native_leads)
     if (state['phase'] == 'validation_failed'
             and (state.get('error') or {}).get('message', '').startswith('Duplicate CAMS parameter/native lead ')):
         _resume_duplicate_validation(folder, state, request)
-    native_leads = tuple(int(h) for h in request['leadtime_hour']) if subset else None
     if state['phase'] == 'validating' and state.get('duplicate_validation_recovery'):
         return _complete_group(folder, state, date, cycle, variables, secret, native_leads=native_leads)
     if (config.deleted_order_retry_limit and state.get('phase') == 'remote_failed'
@@ -298,44 +365,11 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
         state.update(phase="waiting_for_remote")
         save(state_path, state)
         return False
-    state.setdefault("ready_observed_at", now())
-    state.setdefault("first_download_started_at", now())
-    state.update(phase="downloading")
-    save(state_path, state)
-    try:
-        receipt, done = transfer(remote, part, config, expected_bytes=state.get("expected_bytes"))
-    except RangeIdentityError as error:
-        state.update(phase='validation_failed', last_transfer_check=now(), error=safe_error(error, secret))
-        save(state_path, state)
-        raise BlockedRequestError('CAMS range/object validation failed; original bytes retained') from None
-    except Exception as error:
-        import subprocess
-        import requests
-
-        code = getattr(getattr(error, 'response', None), 'status_code', None)
-        transient = (isinstance(error, (requests.Timeout, requests.ConnectionError,
-                                       requests.exceptions.ChunkedEncodingError, subprocess.TimeoutExpired))
-                     or code in (408, 425, 429) or isinstance(code, int) and 500 <= code < 600)
-        state.update(last_transfer_check=now(), error=safe_error(error, secret))
-        if transient:
-            state.update(phase='transfer_deferred', transfer_deferred_count=state.get('transfer_deferred_count', 0)+1)
-        save(state_path, state)
-        if transient:
-            return False
-        raise ValueError("CAMS transfer failed; same request and partial retained") from None
-    state.setdefault("transfer_attempts", []).append(receipt)
-    state.update(last_transfer_check=now(), partial_bytes=receipt["partial_bytes"],
-                 expected_bytes=receipt["expected_bytes"])
-    if not done:
-        save(state_path, state)
-        return False
-    state.update(phase="validating", download_finished_at=now())
-    save(state_path, state)
-    return _complete_group(folder, state, date, cycle, variables, secret, native_leads=native_leads)
+    return _download_successful_group(config, folder, state, date, cycle, variables, remote, secret, native_leads)
 
 
 def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: str = "",
-             require_idle_account: bool = False) -> dict:
+             require_idle_account: bool = False, completed_only: bool = False) -> dict:
     key = f"{date}{cycle:02d}"
     if key < config.first_init:
         raise ValueError("Init predates the configured production floor; no historical backfill")
@@ -344,11 +378,14 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
     folder = config.output_dir / SOURCE / date / f"{cycle:02d}z"
     lock_dir = config.output_dir / SOURCE / ".locks"
     lock_dir.mkdir(parents=True, exist_ok=True)
-    with (lock_dir / f"account-{config.account_for(cycle).name}.lock").open("a") as account_lock, \
-            (lock_dir / f"init-{key}.lock").open("a") as init_lock:
+    with ExitStack() as locks:
         try:
-            fcntl.flock(account_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            fcntl.flock(init_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            names = [f'init-{key}.lock']
+            if not completed_only:
+                names.insert(0, f'account-{config.account_for(cycle).name}.lock')
+            for name in names:
+                lock = locks.enter_context((lock_dir/name).open('a'))
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return {"status": "locked", "date": date, "cycle": cycle}
         if verify_published(folder, date, cycle):
@@ -363,7 +400,7 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                 client, secret = create_client(config.account_for(cycle))
             except Exception:
                 raise ValueError("Unable to initialize CAMS client; check credential file and installed cams extra") from None
-        if require_idle_account or config.max_active_orders_per_account == 1:
+        if not completed_only and (require_idle_account or config.max_active_orders_per_account == 1):
             # Permit polling this init's pinned order, but never add a second
             # order behind another init (including a historical one).
             paths = list((folder/'.cams').glob('*/state.json'))
@@ -383,15 +420,16 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                         'reason': 'another_active_order_with_quarantined_submission'}
         began = time.monotonic()
         verified_groups = set()
+        drained = False
         while True:
-            priority = None if config._realtime_config else newer_live_due(config, key, cycle)
+            priority = None if completed_only or config._realtime_config else newer_live_due(config, key, cycle)
             if priority:
                 return {'status': 'yielded_to_realtime', 'date': date, 'cycle': cycle, 'priority_init': priority}
             pending = None
             for group in GROUPS:
                 if group in verified_groups:
                     continue
-                priority = None if config._realtime_config else newer_live_due(config, key, cycle)
+                priority = None if completed_only or config._realtime_config else newer_live_due(config, key, cycle)
                 if priority:
                     return {'status': 'yielded_to_realtime', 'date': date, 'cycle': cycle,
                             'priority_init': priority}
@@ -403,11 +441,26 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                     or (getattr(config, 'hourly_request_mode', 'bundle') == 'native_constraint_cubes' and not existing))
                 if use_partition:
                     from climate_download.cams.partition import tick
-                    complete = tick(config, group_dir, date, cycle, client, secret)
+                    options = {'completed_only': True} if completed_only else {}
+                    complete = tick(config, group_dir, date, cycle, client, secret, **options)
                 else:
-                    complete = group_tick(config, group_dir, date, cycle, group, client, secret)
+                    options = {'completed_only': True} if completed_only else {}
+                    complete = group_tick(config, group_dir, date, cycle, group, client, secret, **options)
+                if completed_only:
+                    current = json.loads(state_path.read_text()) if state_path.is_file() else {}
+                    progressed = (complete and existing.get('phase') != 'complete'
+                                  or len(current.get('transfer_attempts', [])) > len(existing.get('transfer_attempts', []))
+                                  or (current.get('partial_bytes') or 0) > (existing.get('partial_bytes') or 0)
+                                  or (current.get('parts_complete') or 0) > (existing.get('parts_complete') or 0))
+                    drained |= progressed
                 if not complete:
-                    pending = group
+                    pending = pending or group
+                    if completed_only:
+                        if progressed:
+                            save(folder/'cams.status.json', {k: current.get(k) for k in (
+                                'date', 'cycle', 'group', 'account', 'phase', 'last_check', 'remote_status',
+                                'partial_bytes', 'expected_bytes')})
+                        continue
                     state = json.loads((folder / ".cams" / group / "state.json").read_text())
                     # Pulse the generic disk monitor only after a real poll
                     # or transfer. A blocked failure must not look alive just
@@ -438,8 +491,11 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
                                          "account": state["account"], "request_sha256": state["request_sha256"]})
                 manifest = publish(raw_paths, folder, date, cycle, requests)
                 return {"status": "complete", "date": date, "cycle": cycle, "manifest": str(manifest)}
-            if time.monotonic() - began >= config.max_run_seconds:
-                return {"status": "pending", "date": date, "cycle": cycle, "group": pending}
+            if completed_only or time.monotonic() - began >= config.max_run_seconds:
+                result = {"status": "pending", "date": date, "cycle": cycle, "group": pending}
+                if completed_only:
+                    result.update(completed_only=True, drained=drained)
+                return result
             time.sleep(config.poll_seconds)
 
 

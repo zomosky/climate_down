@@ -19,7 +19,7 @@ from climate_download.cams.client import create_client
 from climate_download.cams.config import CamsConfig, load_config
 from climate_download.cams.queue_policy import load_policy
 from climate_download.cams.state import digest, now, safe_error, save, signature
-from climate_download.cams.worker import BLOCKED, BlockedRequestError, live_priority_inits, pending_inits, run_init
+from climate_download.cams.worker import BLOCKED, DRAINABLE, BlockedRequestError, live_priority_inits, pending_inits, run_init
 
 
 def make_plan(start: str, end: str, *, authorized_at: str) -> dict:
@@ -88,6 +88,31 @@ def blocked_groups(folder: Path, key: str) -> list[dict]:
     return rows
 
 
+def _drain_saved(config, root, plan, weeks, account, client, secret, state):
+    """Advance retained successful receipts without claiming or submitting work."""
+    for week in weeks:
+        for key in week['inits']:
+            folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+            if (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
+                continue
+            saved = allocation.states(config, key)
+            if (not any(s.get('request_id') and s.get('phase') in DRAINABLE for s in saved)
+                    or allocation.owner(config, root, plan, key) != account):
+                continue
+            cycle = int(key[8:])
+            scoped = config.model_copy(update={'cycle_accounts': {**config.cycle_accounts, cycle: account}})
+            try:
+                if client is None:
+                    client, secret = create_client(scoped.account_for(cycle))
+                result = run_init(scoped, key[:8], cycle, client=client, secret=secret, completed_only=True)
+            except (BlockedRequestError, ValueError, OSError, KeyError) as error:
+                state.setdefault('drain_errors', []).append({'init': key, 'error': safe_error(error, secret)})
+                continue
+            if result['status'] == 'complete' or result.get('drained'):
+                return {**state, **result, 'init': key, 'week': week['id'], 'completed_only': True}
+    return None
+
+
 def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, account: str | None = None,
          expected_sha256=None) -> dict:
     if (cycle is None) == (account is None) or cycle is not None and cycle not in (0, 12):
@@ -117,7 +142,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
     state = {'checked_at': now(), 'cycle': cycle, 'account': lane_account, 'week': weeks[0]['id'], 'blocked': [],
              'deferred': [], 'deferred_weeks': [], 'awaiting_acceptance': []}
     priority = live_priority()
-    if priority:
+    if priority and not pooled:
         return {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority}
     # Separate historical floor; normal cron keeps its original configuration.
     config = operational.model_copy(update={'first_init': plan['start']+'00', 'max_run_seconds': 0,
@@ -134,6 +159,10 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
     client, secret, active = None, '', None
     if pooled:
         config._realtime_config = operational
+        if priority:
+            drained = _drain_saved(config, root, plan, weeks, lane_account, client, secret, state)
+            return ({**drained, 'priority_inits': priority} if drained else
+                    {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority})
         try:
             client, secret = create_client(next(a for a in config.accounts if a.name == lane_account))
             jobs = client.get_jobs(limit=100, status=['accepted', 'running']).json['jobs']
@@ -143,6 +172,10 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
             if active and not any(active in week['inits'] for week in weeks):
                 raise ValueError('Active ADS order belongs to an already accepted week')
         except Exception as error:
+            if client is not None:
+                drained = _drain_saved(config, root, plan, weeks, lane_account, client, secret, state)
+                if drained:
+                    return drained
             return {**state, 'status': 'waiting_for_account', 'reason': 'active_order_or_metadata_unverified',
                     'error': safe_error(error, secret)}
     quarantine = (policy or {}).get('quarantine_uncertain_submissions', False)

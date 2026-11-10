@@ -77,17 +77,21 @@ def validate_plan(plan: dict, date: str, cycle: int) -> None:
         raise ValueError('CAMS request partition does not cover every native identity')
 
 
-def tick(config, folder: Path, date: str, cycle: int, client, secret: str) -> bool:
-    from climate_download.cams.worker import BLOCKED, BlockedRequestError, group_tick, newer_live_due
+def tick(config, folder: Path, date: str, cycle: int, client, secret: str, *, completed_only: bool = False) -> bool:
+    from climate_download.cams.worker import BLOCKED, DRAINABLE, BlockedRequestError, group_tick, newer_live_due
     original = request_for(date, cycle, 'hourly')
-    folder.mkdir(parents=True, exist_ok=True)
     state_path, plan_path = folder/'state.json', folder/'partition.json'
+    if completed_only and (not state_path.is_file() or not plan_path.is_file()):
+        return False
+    folder.mkdir(parents=True, exist_ok=True)
     state = json.loads(state_path.read_text()) if state_path.is_file() else {
         'date': date, 'cycle': cycle, 'group': 'hourly', 'account': config.account_for(cycle).name,
         'dataset': DATASET, 'phase': 'prepared', 'created_at': now(), 'request_sha256': signature(original)}
     if (state['request_sha256'] != signature(original) or state['account'] != config.account_for(cycle).name
             or state['dataset'] != DATASET):
         raise ValueError('Pinned CAMS partition request/account differs')
+    if completed_only and state['phase'] not in DRAINABLE:
+        return False
     if not state.get('partitioned_request') and (state.get('request_id') or state['phase'] in BLOCKED):
         raise BlockedRequestError('An existing CAMS order cannot be adopted by a different request strategy')
     if (state['phase'] == 'remote_failed' and state.get('failed_part')
@@ -159,25 +163,32 @@ def tick(config, folder: Path, date: str, cycle: int, client, secret: str) -> bo
     children = []
     pending = False
     for part in plan['parts']:
-        priority = newer_live_due(config, f'{date}{cycle:02d}', cycle)
+        priority = None if completed_only else newer_live_due(config, f'{date}{cycle:02d}', cycle)
         if priority:
             pending = True
             state.update(phase='partitioned', priority_init=priority, last_check=now())
             break
         child_folder = folder/'parts'/part['id']
         try:
+            options = {'completed_only': True} if completed_only else {}
             complete = group_tick(piece_config, child_folder, date, cycle, 'hourly', client, secret,
-                                  request=part['request'])
+                                  request=part['request'], **options)
         except BlockedRequestError:
             child = json.loads((child_folder/'state.json').read_text())
             state.update(phase=child['phase'], failed_part=part['id'], last_check=now(),
                          error=child.get('error'), request_id=child.get('request_id'))
             save(state_path, state)
             raise
-        child = json.loads((child_folder/'state.json').read_text())
+        child_path = child_folder/'state.json'
+        if completed_only and not child_path.is_file():
+            pending = True
+            continue
+        child = json.loads(child_path.read_text())
         children.append(child)
         if not complete:
             pending = True
+            if completed_only:
+                continue
             state.update(phase=child['phase'], active_part=part['id'], last_check=now())
             for key in ('retry_due_at', 'retry_wait_reason'):
                 if key in child:
