@@ -23,6 +23,19 @@ def test_command_has_inner_timeout_and_complete_member_selection(tmp_path):
  for _,cmd in cmds:assert 'timeout' in cmd and '--bounded-exec' in cmd and '7200s' in cmd
  assert cmds[0][1][cmds[0][1].index('--member-count')+1]=='5'
 
+def test_configurable_process_download_without_changing_publication(tmp_path):
+ c=config(tmp_path);original=m.commands(c,'20261105')
+ c.update(download_workers=16,download_executor='process')
+ cmds=m.commands(c,'20261105');download=cmds[0][1]
+ assert download[download.index('--workers')+1]=='16'
+ assert download[download.index('--executor')+1]=='process'
+ assert cmds[1]==original[1]
+
+@pytest.mark.parametrize('key,bad',[('download_workers',0),('download_workers',33),('download_workers',True),('download_executor','other')])
+def test_invalid_download_pool_configuration(tmp_path,key,bad):
+ c=config(tmp_path);c[key]=bad
+ with pytest.raises(ValueError):m.commands(c,'20261105')
+
 @pytest.mark.parametrize('bad',[0,32,True,'5'])
 def test_invalid_member_count(tmp_path,bad):
  c=config(tmp_path);c['member_count']=bad

@@ -6,12 +6,13 @@ when every requested member/step has passed GRIB-header validation. No ECDS queu
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import tempfile
@@ -245,9 +246,24 @@ def download_member(plan: Plan, member: int, step: int):
     return result
 
 
-def run(plan: Plan, workers=4):
-    if not 1 <= workers <= 8:
-        raise ValueError('workers must be 1..8')
+def check_parallelism(workers, executor):
+    if type(workers) is not int or not 1 <= workers <= 32:
+        raise ValueError('workers must be an integer in 1..32')
+    if executor not in ('thread', 'process'):
+        raise ValueError('executor must be thread or process')
+
+
+def download_pool(workers, executor):
+    check_parallelism(workers, executor)
+    if executor == 'process':
+        # Spawn avoids inheriting the parent's per-init lock, HTTP state and
+        # ecCodes state. Each task owns a unique (member, step) cache file.
+        return ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context('spawn'))
+    return ThreadPoolExecutor(max_workers=workers)
+
+
+def run(plan: Plan, workers=4, executor='thread'):
+    check_parallelism(workers, executor)
     plan.folder.mkdir(parents=True, exist_ok=True)
     with (plan.folder / '.download.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -260,7 +276,7 @@ def run(plan: Plan, workers=4):
             raise ValueError('existing unowned output; use another output-dir')
         save(identity_path, plan.identity)
         results, failures = [], []
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with download_pool(workers, executor) as pool:
             futures = {pool.submit(download_member, plan, m, s): (m, s) for m in plan.members for s in plan.steps}
             for future in as_completed(futures):
                 try:
@@ -314,18 +330,20 @@ def add_parser(sub):
     g.add_argument('--members', help='c00,p01,p02 or 0,1,2')
     p.add_argument('--steps', default='all', help='all or comma-separated native hours')
     p.add_argument('--output-dir', type=Path, default=Path('output'))
-    p.add_argument('--workers', type=int, default=4)
+    p.add_argument('--workers', type=int, default=4, help='concurrent member/step tasks, 1..32')
+    p.add_argument('--executor', choices=['thread', 'process'], default='thread', help='download worker backend')
     p.add_argument('--base-url', default=HOST, help='NOAA HTTP root; S3 archive or NOMADS recent data')
     p.add_argument('--dry-run', action='store_true')
     p.set_defaults(func=main)
 
 
 def main(args):
+    check_parallelism(args.workers, args.executor)
     members = select_members(args.member_count, args.members)
     steps = STEPS if args.steps == 'all' else tuple(sorted(int(v) for v in args.steps.split(',')))
     plan = Plan(args.date, members, steps, args.output_dir, args.base_url)
     if args.dry_run:
         print(json.dumps({**plan.identity, 'output': str(plan.folder), 'expected_messages': len(members) * sum(len(expected_fields(s)) for s in steps)}, indent=2))
     else:
-        print(json.dumps({'manifest': str(run(plan, args.workers)), 'status': 'complete'}))
+        print(json.dumps({'manifest': str(run(plan, args.workers, args.executor)), 'status': 'complete'}))
     return 0

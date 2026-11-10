@@ -1049,6 +1049,8 @@ uv run climate_download gefs-ens --date 20261029 --member-count 5 --dry-run
 uv run --extra viz climate_download gefs-ens --date 20261029 --member-count 5 --output-dir ../climate_data
 # 明确选择成员（不可与 member-count 同用）
 uv run --extra viz climate_download gefs-ens --date 20261029 --members c00,p02,p07 --output-dir output/selected
+# 进程池并行下载：按 (成员, 时效) 分工，每个任务独立校验和原子落盘
+uv run --extra cams climate_download gefs-ens --date 20261029 --member-count 5 --executor process --workers 16 --output-dir output/parallel
 ```
 
 此子链使用独立请求身份与文件锁，避免同一输出目录内不同成员/时效的续传混用。
@@ -1057,6 +1059,10 @@ uv run --extra viz climate_download gefs-ens --date 20261029 --members c00,p02,p
 manifest。它仍由 `climate_restore` 的 `gefs-ens` adapter 消费。控制产品通过
 重整端 `export-gefs-control` 生成，读取源名为 `gefs-ctrl`。
 
-本地接入不附带任何生产定时任务；需要的日期必须已在 NOAA 发布。
+`--executor thread|process` 默认 thread，`--workers` 默认 4、范围 1–32。
+进程池使用 spawn，不继承父进程的下载锁和 ecCodes 状态；父进程统一汇总、组合时效文件
+并发布 manifest。改变并发方式或数量不改变数据请求身份，可复用已有断点。
+
+下载命令本身不会自动安装生产定时任务；需要的日期必须已在 NOAA 发布。
 
 GEFS 自动下载及完整产品发布调度见 [deploy/GEFS.md](deploy/GEFS.md)。

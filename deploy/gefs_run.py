@@ -38,6 +38,9 @@ def commands(cfg, date):
     root, release = cfg['data_root'], cfg['release_root']
     members = cfg.get('member_count', 5)
     if type(members) is not int or not 1 <= members <= 31: raise ValueError('member_count must be 1..31')
+    workers, executor = cfg.get('download_workers', 4), cfg.get('download_executor', 'thread')
+    if type(workers) is not int or not 1 <= workers <= 32: raise ValueError('download_workers must be an integer in 1..32')
+    if executor not in ('thread', 'process'): raise ValueError('download_executor must be thread or process')
     manifest = f'{root}/gefs-ens/{date}/00z/{date}_00z_gefs-ens.manifest.json'
     def inside(project, args):
         directory = f'{release}/{project}'
@@ -46,7 +49,8 @@ def commands(cfg, date):
             f'{directory}/.venv/bin/python', f'{release}/download/deploy/gefs_run.py',
             '--bounded-exec', '--', *args]
     download = inside('download', [f'{release}/download/.venv/bin/climate_download',
-        'gefs-ens', '--date', date, '--member-count', str(members), '--workers', '4', '--output-dir', root,
+        'gefs-ens', '--date', date, '--member-count', str(members), '--workers', str(workers),
+        '--executor', executor, '--output-dir', root,
         '--base-url', cfg.get('download_base_url', 'https://noaa-gefs-pds.s3.amazonaws.com')])
     restore = inside('climate_restorage', [f'{release}/climate_restorage/.venv/bin/python',
         f'{release}/climate_restorage/deploy/gefs_publish.py', '--manifest', manifest,

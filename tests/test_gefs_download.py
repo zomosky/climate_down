@@ -12,6 +12,23 @@ def test_plan_and_cli():
     assert len(g.STEPS) == 181 and g.STEPS[-1] == 840
     assert len(g.expected_fields(0)) == 9 and len(g.expected_fields(3)) == 15
     assert g.select_members(None, 'p04,c00,p02') == (0, 2, 4)
+    parallel = build_parser().parse_args(['gefs-ens', '--date', '20261029', '--workers', '16', '--executor', 'process'])
+    assert parallel.workers == 16 and parallel.executor == 'process'
+
+
+@pytest.mark.parametrize('workers,executor', [(0,'process'), (33,'process'), (True,'thread'), (4,'invalid')])
+def test_invalid_parallelism_never_creates_output(tmp_path, workers, executor):
+    plan = g.Plan('20261029', (0,), (0,), tmp_path)
+    with pytest.raises(ValueError):g.run(plan, workers, executor)
+    assert not plan.folder.exists()
+
+
+def test_spawn_workers_can_receive_plan_without_parent_state(tmp_path):
+    plan = g.Plan('20261029', (0,1), (0,3), tmp_path)
+    with g.download_pool(2, 'process') as pool:
+        # Exercise actual spawn/pickle/import without any external HTTP service.
+        assert pool.submit(getattr, plan, 'identity').result(timeout=20) == plan.identity
+        assert pool.submit(g.select_members, None, 'c00,p02').result(timeout=20) == (0,2)
 
 
 @pytest.mark.parametrize('count,text', [(0, None), (32, None), (2, 'c00'), (None, 'c00,0'), (None, 'p00'), (None, 'p31')])
