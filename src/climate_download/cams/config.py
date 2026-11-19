@@ -23,6 +23,7 @@ class CamsConfig(BaseModel):
     history_accounts: list[str] = Field(default_factory=list, max_length=3)
     max_active_orders_per_account: Literal[1] | None = None
     _realtime_config: CamsConfig | None = PrivateAttr(default=None)
+    _retry_activations: dict = PrivateAttr(default_factory=dict)
     first_init: str
     lookback_days: int = Field(default=1, ge=0, le=2)
     publish_lag_hours: float = Field(default=10, ge=10, le=24)
@@ -36,6 +37,7 @@ class CamsConfig(BaseModel):
         default=None, min_length=1, max_length=48)
     mars_count_retry_window_seconds: int | None = Field(default=None, ge=1800, le=86400)
     generic_mars_retry_enabled: bool = False
+    ads_retry_enabled: bool = False
     quarantine_uncertain_submissions: bool = False
     deleted_order_retry_limit: int = Field(default=0, ge=0, le=1)
     hourly_request_mode: Literal['bundle', 'native_constraint_cubes'] = 'bundle'
@@ -80,6 +82,10 @@ class CamsConfig(BaseModel):
             raise ValueError('Deleted-order recovery requires the bounded daily retry policy')
         if self.generic_mars_retry_enabled and self.mars_count_retry_window_seconds is None:
             raise ValueError('Generic MARS recovery requires the bounded daily retry policy')
+        if self.ads_retry_enabled and (not self.mars_count_retry_window_seconds
+                                       or not self.quarantine_uncertain_submissions
+                                       or self.max_active_orders_per_account != 1):
+            raise ValueError('ADS recovery requires bounded daily retries, quarantine and one active order')
         return self
 
     def account_for(self, cycle: int) -> Account:

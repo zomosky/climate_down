@@ -111,7 +111,7 @@ def _first_failure_at(config, folder, state) -> dt.datetime:
     for path in paths:
         failure = json.loads(path.read_text())
         kind = (failure.get('diagnostic') or {}).get('kind')
-        if (kind in ('mars_field_count_mismatch', 'mars_runtime_error', 'ads_order_deleted')
+        if (kind in ('mars_field_count_mismatch', 'mars_runtime_error', 'ads_job_failed', 'ads_order_deleted')
                 and failure.get('local_request_verified')
                 and (failure.get('remote_request_verified') or (kind == 'ads_order_deleted'
                      and failure.get('deleted_response_verified')))):
@@ -119,11 +119,11 @@ def _first_failure_at(config, folder, state) -> dt.datetime:
             if stamp.tzinfo is None:
                 raise RecoveryBlocked('CAMS retry window requires an aware failure timestamp')
             starts.append(stamp)
-    from climate_download.cams.generic import read_enrollment
+    from climate_download.cams.generic import enrollment_start, read_enrollment
     enrollments = set(root.glob('*/failures/*/generic_mars_enrollment.json'))
     enrollments.update(root.glob('hourly/parts/*/failures/*/generic_mars_enrollment.json'))
     enrollments.update(folder.glob('failures/*/generic_mars_enrollment.json'))
-    starts.extend(dt.datetime.fromisoformat(read_enrollment(path)['observed_at']) for path in enrollments)
+    starts.extend(enrollment_start(read_enrollment(path)) for path in enrollments)
     from climate_download.cams.submission import read_replacement
     starts.extend(dt.datetime.fromisoformat(read_replacement(root, path)['window_start_at'])
                   for path in (root/'submission_replacements').glob('*.json'))
@@ -141,9 +141,9 @@ def _within_window(config, folder, state, policy) -> bool:
 
 
 def _allowed(config, state, folder) -> bool:
-    if ((state.get('failure_diagnostic') or {}).get('kind') == 'mars_runtime_error'
-            and (not config.generic_mars_retry_enabled
-                 or state.get('mars_retry_policy', {}).get('schema_version') != 3)):
+    kind = (state.get('failure_diagnostic') or {}).get('kind')
+    enabled = {'mars_runtime_error': config.generic_mars_retry_enabled, 'ads_job_failed': config.ads_retry_enabled}
+    if kind in enabled and (not enabled[kind] or state.get('mars_retry_policy', {}).get('schema_version') != 3):
         return False
     policy = state.get('mars_retry_policy', {})
     if not policy:
@@ -223,10 +223,14 @@ def _failure_evidence(folder, state, request):
             if prior_enrollment != snapshot.get('staged_policy_enrollment'):
                 raise RecoveryBlocked('CAMS policy migration predecessor identity changed')
     failure = json.loads((archive/'failure.json').read_text())
-    from climate_download.cams.generic import verify_proof
+    from climate_download.cams.generic import enrollment_start, read_enrollment, verify_proof
     verify_proof(folder, previous, archive)
     if state.get('phase') == 'retry_wait':
-        due = dt.datetime.fromisoformat(failure['captured_at'])+dt.timedelta(seconds=_delays(policy)[used_count(state)])
+        enrollment = previous.get('generic_mars_enrollment')
+        observed = dt.datetime.fromisoformat(failure['captured_at'])
+        due = observed+dt.timedelta(seconds=_delays(policy)[used_count(state)])
+        if enrollment:
+            due = max(due, enrollment_start(read_enrollment(folder/enrollment['directory'])))
         if dt.datetime.fromisoformat(state['retry_due_at']) != due:
             raise RecoveryBlocked('Retained CAMS retry deadline changed')
     for attempt in state.get('previous_attempts', []):
@@ -301,11 +305,14 @@ def verify_before_replacement(config, folder, state) -> None:
 
 
 def record_failure(config, folder, state, request, reply, error, secret) -> bool:
-    """Archive every terminal failure; recover only explicitly enabled MARS types."""
+    """Archive every terminal failure and schedule verified, enabled cases."""
     diagnostic = classify_mars_failure(error)
     if diagnostic is None and config.generic_mars_retry_enabled:
         from climate_download.cams.generic import classify
         diagnostic = classify(error)
+    if diagnostic is None and config.ads_retry_enabled and reply['status'] == 'failed':
+        from climate_download.cams.generic import classify_ads
+        diagnostic = classify_ads(error)
     state.update(phase='remote_failed', error=safe_error(error, secret))
     state.pop('failure_diagnostic', None)
     if diagnostic:
@@ -373,9 +380,15 @@ def retry_decision(config, folder, state, request, client, secret) -> str | None
             state.update(retry_wait_reason='another_active_order', last_check=now())
             save(folder/'state.json', state)
             return None
-        if (state.get('failure_diagnostic') or {}).get('kind') == 'mars_runtime_error':
+        kind = (state.get('failure_diagnostic') or {}).get('kind')
+        if kind in ('mars_runtime_error', 'ads_job_failed'):
             from climate_download.cams.deleted import _exclude_duplicate
-            state['generic_duplicate_check'] = _exclude_duplicate(client, state, request)
+            if kind == 'ads_job_failed':
+                from climate_download.cams.submission import other_published_orders
+                known = other_published_orders(config, state)
+                state['generic_duplicate_check'] = _exclude_duplicate(client, state, request, known_other_orders=known)
+            else:
+                state['generic_duplicate_check'] = _exclude_duplicate(client, state, request)
     except RecoveryBlocked:
         raise
     except Exception as error:

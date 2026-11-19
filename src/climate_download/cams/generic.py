@@ -1,4 +1,4 @@
-"""Opt-in recovery of confirmed MARS failures with no detailed server diagnostic."""
+"""Opt-in recovery of confirmed extraction failures without a detailed diagnosis."""
 from __future__ import annotations
 
 import datetime as dt
@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 import re
 
-from climate_download.cams import recovery
+from climate_download.cams import recovery, retry_activation
 from climate_download.cams.state import digest, safe_error, save, signature
 
 KIND = 'mars_runtime_error'
+ADS_KIND = 'ads_job_failed'
+GENERIC_KINDS = {KIND, ADS_KIND}
 PROOF = 'generic_mars_enrollment'
 
 
@@ -27,6 +29,21 @@ def classify(error):
     return {'kind': KIND, 'detail_missing': True}
 
 
+def classify_ads(error):
+    """Bare results error, only eligible after the original ADS job is verified failed."""
+    lines = str(error).strip().splitlines()
+    if len(lines) == 2 and re.match(r'^400 Client Error: Bad Request for url:', lines[0]):
+        lines = lines[1:]
+    if lines == ['The job has failed']:
+        return {'kind': ADS_KIND, 'detail_missing': True}
+    return None
+
+
+def enrollment_start(entry):
+    activation = entry.get('retry_activation')
+    return retry_activation.start(activation, entry, entry['state_sha256'], dt.datetime.fromisoformat(entry['observed_at']))
+
+
 def read_enrollment(path):
     entry = json.loads(path.read_text()); archive = path.parent
     for name, key in (('state.json', 'state_sha256'), ('request.json', 'request_file_sha256'),
@@ -34,8 +51,11 @@ def read_enrollment(path):
         if digest(archive/name) != entry[key]:
             raise recovery.RecoveryBlocked('Generic MARS enrollment original bytes changed')
     failure = json.loads((archive/'failure.json').read_text())
-    if (entry['diagnostic'] != classify(RuntimeError(failure['error']['message']))
-            or entry['diagnostic']['kind'] != KIND
+    kind = entry['diagnostic']['kind']
+    classifier = classify_ads if kind == ADS_KIND else classify
+    if (entry['diagnostic'] != classifier(RuntimeError(failure['error']['message']))
+            or kind not in GENERIC_KINDS
+            or (entry.get('retry_activation') and kind != ADS_KIND)
             or any(entry[key] != failure[key] for key in ('request_id', 'request_sha256', 'account'))
             or signature(json.loads((archive/'request.json').read_text())) != entry['request_sha256']
             or entry['observed_at'] != failure['captured_at']
@@ -46,6 +66,8 @@ def read_enrollment(path):
     verified = dt.datetime.fromisoformat(entry['verified_at'])
     if stamp.tzinfo is None or verified.tzinfo is None or stamp > verified:
         raise recovery.RecoveryBlocked('Generic MARS enrollment failure timestamp is invalid')
+    if enrollment_start(entry) > verified:
+        raise recovery.RecoveryBlocked('Historical ADS retry activation postdates verification')
     return entry
 
 
@@ -66,14 +88,17 @@ def verify_proof(folder, proof, archive):
 
 def enroll(config, folder, state, request, client, secret):
     """Reclassify a retained failure through a separate immutable receipt, never rewrite it."""
-    if (not config.generic_mars_retry_enabled or state.get('phase') != 'remote_failed'
+    if (not (config.generic_mars_retry_enabled or config.ads_retry_enabled) or state.get('phase') != 'remote_failed'
             or state.get('failure_diagnostic') or not state.get('failed_attempt')
             or not state.get('request_id') or recovery.has_raw_evidence(folder)
             or state.get('mars_retry_policy', {}).get('schema_version') != 3):
         return False
     recovery._delays(state['mars_retry_policy'])
     archive, failure = recovery._failure_evidence(folder, state, request)
-    diagnostic = classify(RuntimeError(failure['error']['message']))
+    error = RuntimeError(failure['error']['message'])
+    diagnostic = classify(error) if config.generic_mars_retry_enabled else None
+    if not diagnostic and config.ads_retry_enabled:
+        diagnostic = classify_ads(error)
     if not diagnostic:
         return False
     if (not (failure['local_request_verified'] and failure['remote_request_verified'])
@@ -85,7 +110,10 @@ def enroll(config, folder, state, request, client, secret):
         raise recovery.RecoveryBlocked('Original generic MARS failure has no UTC timestamp')
     window = min(state['mars_retry_policy']['window_seconds'], config.mars_count_retry_window_seconds)
     at = dt.datetime.fromisoformat(recovery.now())
-    if at > observed+dt.timedelta(seconds=window):
+    activation = (retry_activation.for_state(config, folder, state, state['failed_attempt']['state_sha256'])
+                  if diagnostic['kind'] == ADS_KIND else None)
+    started = retry_activation.start(activation, state, state['failed_attempt']['state_sha256'], observed)
+    if at > started+dt.timedelta(seconds=window):
         return False
     path = archive/'generic_mars_enrollment.json'
     try:
@@ -110,12 +138,15 @@ def enroll(config, folder, state, request, client, secret):
                  'account': state['account'], 'diagnostic': diagnostic, 'remote_failed_verified': True,
                  'state_sha256': digest(archive/'state.json'), 'request_file_sha256': digest(archive/'request.json'),
                  'failure_sha256': digest(archive/'failure.json')}
+        if activation:
+            entry['retry_activation'] = activation
         recovery._archive_exact(path, (json.dumps(entry, ensure_ascii=False, indent=2)+'\n').encode())
     read_enrollment(path)
     state['failed_attempt'][PROOF] = {'directory': str(path.relative_to(folder)), 'sha256': digest(path)}
     state['failure_diagnostic'] = diagnostic
     if recovery._allowed(config, state, folder):
-        due = observed+dt.timedelta(seconds=recovery._delays(state['mars_retry_policy'])[recovery.used_count(state)])
+        delay = recovery._delays(state['mars_retry_policy'])[recovery.used_count(state)]
+        due = max(started, observed+dt.timedelta(seconds=delay))
         state.update(phase='retry_wait', retry_due_at=due.isoformat())
     save(folder/'state.json', state)
     return state['phase'] == 'retry_wait'

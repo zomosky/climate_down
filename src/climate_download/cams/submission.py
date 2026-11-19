@@ -1,15 +1,16 @@
-"""Explicit original-order recovery; an unknown POST is never an automatic retry."""
+"""Reconcile an unresolved POST before adopting or reserving one replacement."""
 from __future__ import annotations
 
 import datetime as dt
 import fcntl
 import json
 from pathlib import Path
+import re
 import time
 
-from climate_download.cams import recovery
+from climate_download.cams import recovery, retry_activation
 from climate_download.cams.catalogue import DATASET, SOURCE, request_for, request_variables
-from climate_download.cams.state import digest, now, save, signature
+from climate_download.cams.state import digest, now, safe_error, save, signature
 from climate_download.cams.client import create_client, preflight
 
 UNCERTAIN = {'submitting', 'submission_uncertain'}
@@ -50,10 +51,32 @@ def _identity(request):
                       and isinstance(v, list) else v for k, v in request.items()})
 
 
-def lookup(client, state, request):
+def other_published_orders(config, state):
+    """Orders already published with a different init cannot match this POST."""
+    cutoff = (_stamp(state['submission_started_at'])-dt.timedelta(minutes=5)).timestamp()
+    target = state['date'], state['cycle']
+    known = set()
+    for path in (config.output_dir/SOURCE).glob('????????/??z/*_ec_cams.manifest.json'):
+        try:
+            if path.stat().st_mtime < cutoff:
+                continue
+            manifest = json.loads(path.read_text())
+            init = path.parents[1].name, int(path.parent.name[:2])
+            if (init == target or (manifest['date'], manifest['cycle']) != init
+                    or manifest['source']['name'] != SOURCE or not manifest['completed_at'] or manifest.get('failures')):
+                continue
+            known.update(row['request_id'] for row in manifest.get('original_requests', [])
+                         if row.get('account') == state['account'] and row.get('request_id'))
+        except recovery.EVIDENCE_ERRORS:
+            continue
+    return known
+
+
+def lookup(client, state, request, *, from_intent=False, known_other_orders=()):
     """Bounded GET-only search; absence is evidence, never proof that no POST occurred."""
     init = _stamp(request['date']+'T'+request['time'][0]+':00+00:00')
-    floor = min(init, _stamp(state['submission_started_at']))-dt.timedelta(minutes=5)
+    sent = _stamp(state['submission_started_at'])
+    floor = (sent if from_intent else min(init, sent))-dt.timedelta(minutes=5)
     page = client.get_jobs(limit=100, sortby='-created')
     previous = {a['request_id'] for a in state.get('previous_attempts', [])}
     seen, matches = set(), []
@@ -74,7 +97,7 @@ def lookup(client, state, request):
             seen.add(rid)
             if not isinstance(job.get('processID'), str) or not job['processID']:
                 raise recovery.RecoveryBlocked('ADS submission lookup lacks dataset identity')
-            if job.get('processID') != DATASET:
+            if job.get('processID') != DATASET or rid in known_other_orders:
                 continue
             remote = client.get_remote(rid).json
             if remote.get('processID', DATASET) != DATASET:
@@ -83,7 +106,7 @@ def lookup(client, state, request):
             if not ids:
                 raise recovery.RecoveryBlocked('ADS submission lookup lacks request identity')
             if remote['status'] not in ('accepted', 'running', 'successful') and (
-                    rid in previous or stamp < _stamp(state['submission_started_at'])-dt.timedelta(minutes=5)):
+                    rid in previous or stamp < sent-dt.timedelta(minutes=5)):
                 continue
             if _identity(ids) == _identity(request) and remote['status'] not in ('deleted', 'dismissed'):
                 matches.append({'request_id': rid, 'status': remote['status'],
@@ -114,8 +137,12 @@ def read_replacement(root: Path, path: Path):
             raise recovery.RecoveryBlocked('Submission replacement original evidence changed')
     saved = json.loads((archive/'state.json').read_text())
     request = json.loads((archive/'request.json').read_text())
+    authorization = json.loads((archive/'authorization.json').read_text())
+    activation = authorization.get('retry_activation') if authorization.get('schema_version') == 2 else None
+    latest_start = retry_activation.start(activation, saved, entry['state_sha256'],
+                                          _stamp(saved['submission_started_at']))
     if (signature(request) != entry['request_sha256'] or saved['request_sha256'] != entry['request_sha256']
-            or saved['phase'] not in UNCERTAIN or _stamp(entry['window_start_at']) > _stamp(saved['submission_started_at'])
+            or saved['phase'] not in UNCERTAIN or _stamp(entry['window_start_at']) > latest_start
             or entry['reserved_retry_count'] != recovery.used_count(saved)+1):
         raise recovery.RecoveryBlocked('Submission replacement evidence or window changed')
     return entry
@@ -166,8 +193,91 @@ def _repair_parent(parent, folder, proof):
         save(parent/'state.json', saved)
 
 
-def recover_submission(config, date, cycle, group, *, part=None, authorization=None, client=None, secret=''):
-    """One explicit operator action under normal locks; normal cron never grants POST authority."""
+def _transient_submit(state):
+    if state['phase'] != 'submission_uncertain':
+        return False
+    error = state.get('error') or {}
+    statuses = (408, 425, 429, 500, 502, 503, 504)
+    code = state.get('submission_error_http_status')
+    if code is not None:
+        return code in statuses
+    if error.get('type') == 'HTTPError':
+        match = re.match(r'^(\d{3}) (?:Server|Client) Error:', error.get('message', ''))
+        return bool(match and int(match[1]) in statuses)
+    return error.get('type') in {'Timeout', 'TimeoutError', 'ConnectTimeout', 'ReadTimeout', 'ConnectionError'}
+
+
+def _automatic_schedule(config, folder, state):
+    policy = state.get('mars_retry_policy', {})
+    if not config.ads_retry_enabled or policy.get('schema_version') != 3 or state['phase'] not in UNCERTAIN:
+        return None
+    delays = recovery._delays(policy)
+    sent = _stamp(state['submission_started_at'])
+    original_hash = digest(folder/'state.json')
+    activation = retry_activation.for_state(config, folder, state, original_hash)
+    started = retry_activation.start(activation, state, original_hash, sent)
+    window = min(policy['window_seconds'], config.mars_count_retry_window_seconds)
+    try:
+        started = min(started, recovery._first_failure_at(config, folder, state))
+    except recovery.RecoveryBlocked as error:
+        if str(error) != 'CAMS retry window has no retained verified failure':
+            raise
+    return max(started, sent+dt.timedelta(seconds=delays[0])), started+dt.timedelta(seconds=window), activation
+
+
+def _check_path(folder, state):
+    return folder/'uncertain'/signature([state['submission_started_at'], state['request_sha256']])[:16]/'automatic_next_check.json'
+
+
+def _next_check(path, due):
+    return max(due, _stamp(json.loads(path.read_text())['at'])) if path.is_file() else due
+
+
+def due_candidates(config, init, key, at):
+    """Inspect durable intents only. The attempt revalidates under both locks."""
+    if not config.ads_retry_enabled:
+        return
+    for row in uncertain_groups(init, key):
+        state_path = init/row['state']
+        folder = state_path.parent
+        try:
+            state = json.loads(state_path.read_text())
+            if state.get('partitioned_request'):
+                # The child may already be recovered after a crash between saves.
+                part = state.get('failed_part') or state.get('active_part')
+                if not part or not re.fullmatch('[a-f0-9]{16}', part):
+                    continue
+                child = folder/'parts'/part/'state.json'
+                if child.is_file():
+                    piece = json.loads(child.read_text())
+                    if (piece['phase'] not in UNCERTAIN and piece.get('request_id')
+                            and (piece.get('submission_recovery') or piece.get('submission_replacement'))):
+                        yield 'hourly', part
+                continue
+            if state['account'] != config.account_for(int(key[8:])).name:
+                continue
+            schedule = _automatic_schedule(config, folder, state)
+            if schedule and _next_check(_check_path(folder, state), schedule[0]) <= at <= schedule[1]:
+                yield state['group'], folder.name if folder.parent.name == 'parts' else None
+        except recovery.EVIDENCE_ERRORS:
+            continue
+
+
+def reconcile_due(config, init, key, *, client=None, secret='', allow_submit=True):
+    for group, part in due_candidates(config, init, key, _stamp(now())):
+        try:
+            result = recover_submission(config, key[:8], int(key[8:]), group, part=part, automatic=True,
+                                        allow_submit=allow_submit, client=client, secret=secret)
+        except Exception as error:
+            return {'status': 'lookup_deferred', 'init': key, 'group': group, 'error': safe_error(error, secret)}
+        if result['status'] != 'not_due':
+            return {k: v for k, v in result.items() if k != 'lookup'} | {'group': group}
+    return None
+
+
+def recover_submission(config, date, cycle, group, *, part=None, authorization=None, automatic=False,
+                       allow_submit=True, client=None, secret=''):
+    """Recover under account/init locks and preserve the original POST evidence."""
     key = f'{date}{cycle:02d}'
     if key < config.first_init:
         raise ValueError('Submission predates configured recovery floor')
@@ -198,6 +308,24 @@ def recover_submission(config, date, cycle, group, *, part=None, authorization=N
         if recovery.has_raw_evidence(folder):
             raise recovery.RecoveryBlocked('Unknown submission has raw bytes requiring their original order')
         archive = folder/'uncertain'/signature([state['submission_started_at'], signature(request)])[:16]
+        if automatic:
+            schedule = _automatic_schedule(config, folder, state)
+            if schedule is None:
+                return {'status': 'not_eligible', 'init': key, 'orders_submitted': 0}
+            due, deadline, activation = schedule
+            cadence = _check_path(folder, state)
+            due = _next_check(cadence, due)
+            at = _stamp(now())
+            if at > deadline:
+                return {'status': 'window_expired', 'init': key, 'orders_submitted': 0}
+            if at < due:
+                return {'status': 'not_due', 'init': key, 'orders_submitted': 0, 'retry_due_at': due.isoformat()}
+            save(cadence, {'at': (at+dt.timedelta(seconds=1800)).isoformat()})
+            if _transient_submit(state) and allow_submit:
+                authorization = {'schema_version': 2, 'state_sha256': digest(folder/'state.json'),
+                    'request_sha256': signature(request), 'max_extra_submissions': 1,
+                    'authorized_at': at.isoformat(), 'expires_at': deadline.isoformat(),
+                    'reason': 'automatic recovery of a transient ADS submission', 'retry_activation': activation}
         for name in ('state.json', 'request.json'):
             recovery._archive_exact(archive/name, (folder/name).read_bytes())
         if parent != folder:
@@ -208,8 +336,11 @@ def recover_submission(config, date, cycle, group, *, part=None, authorization=N
         if client is None:
             client, secret = create_client(config.account_for(cycle))
 
+        known = other_published_orders(config, state) if automatic else None
+
         def inspect():
-            result = lookup(client, state, request)
+            result = (lookup(client, state, request, from_intent=True, known_other_orders=known) if automatic
+                      else lookup(client, state, request))
             path = archive/('lookup-'+signature(result)[:16]+'.json')
             recovery._archive_exact(path, (json.dumps(result, indent=2)+'\n').encode())
             if len(result['matches']) > 1:
@@ -233,14 +364,15 @@ def recover_submission(config, date, cycle, group, *, part=None, authorization=N
         if spent or authorization is None:
             return {'status': 'replacement_spent' if spent else 'not_found', 'init': key,
                     'orders_submitted': 0, 'lookup': result}
-        if (authorization.get('schema_version') != 1
+        if (authorization.get('schema_version') != (2 if automatic else 1)
                 or authorization.get('state_sha256') != digest(archive/'state.json')
                 or authorization.get('request_sha256') != signature(request)
                 or type(authorization.get('max_extra_submissions')) is not int
                 or authorization['max_extra_submissions'] != 1 or not authorization.get('reason')
                 or any(dt.datetime.fromisoformat(authorization[k]).tzinfo is None for k in ('authorized_at', 'expires_at'))
                 or _stamp(authorization['authorized_at']) > _stamp(now())
-                or _stamp(authorization['expires_at']) > _stamp(state['submission_started_at'])+dt.timedelta(days=1)):
+                or (not automatic and _stamp(authorization['expires_at']) >
+                    _stamp(state['submission_started_at'])+dt.timedelta(days=1))):
             raise recovery.RecoveryBlocked('Explicit single-submission authorization differs from the original')
         from climate_download.cams.deleted import account_ready
         from climate_download.cams.worker import _submit_once, newer_live_due
@@ -250,7 +382,9 @@ def recover_submission(config, date, cycle, group, *, part=None, authorization=N
             if policy.get('schema_version') != 3 or config.mars_count_retry_window_seconds is None:
                 raise recovery.RecoveryBlocked('Submission replacement requires the shared bounded daily policy')
             recovery._delays(policy)
-            starts = [_stamp(state['submission_started_at'])]
+            observed = _stamp(state['submission_started_at'])
+            starts = [retry_activation.start(authorization.get('retry_activation') if automatic else None,
+                                              state, digest(archive/'state.json'), observed)]
             try:
                 starts.append(recovery._first_failure_at(config, folder, state))
             except recovery.RecoveryBlocked as error:
@@ -285,7 +419,8 @@ def recover_submission(config, date, cycle, group, *, part=None, authorization=N
         state['submission_replacement'] = {'ledger': str(ledger.relative_to(init/'.cams')), 'sha256': digest(ledger)}
         save(folder/'state.json', state)
         _submit_once(folder, state, request, client, secret)
-        proof = {'method': 'explicit_single_replacement', 'directory': str(archive.relative_to(folder)),
+        proof = {'method': 'automatic_single_replacement' if automatic else 'explicit_single_replacement',
+                 'directory': str(archive.relative_to(folder)),
                  'ledger_sha256': digest(ledger), 'request_id': state['request_id']}
         _reopen(parent, folder, state, proof)
         return {'status': 'replacement_submitted', 'init': key, 'request_id': state['request_id'],

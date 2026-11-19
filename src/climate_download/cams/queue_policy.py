@@ -15,7 +15,7 @@ def make_policy(root: Path, plan: dict, delays: list[int], *, authorized_at: str
                 retry_window_seconds: int | None = None, deleted_order_retry_limit: int = 0,
                 continue_other_weeks_when_blocked: bool = False,
                 quarantine_uncertain_submissions: bool = False,
-                generic_mars_retry_enabled: bool = False) -> dict:
+                generic_mars_retry_enabled: bool = False, ads_retry_enabled: bool = False) -> dict:
     daily = retry_window_seconds is not None
     if (not isinstance(delays, list) or not 1 <= len(delays) <= (48 if daily else 3)
             or any(type(d) is not int or not 300 <= d <= 21600 for d in delays)
@@ -29,6 +29,8 @@ def make_policy(root: Path, plan: dict, delays: list[int], *, authorized_at: str
             or (quarantine_uncertain_submissions and not continue_other_weeks_when_blocked)
             or type(generic_mars_retry_enabled) is not bool
             or (generic_mars_retry_enabled and not daily)
+            or type(ads_retry_enabled) is not bool
+            or (ads_retry_enabled and not (daily and quarantine_uncertain_submissions))
             or not isinstance(authorized_at, str) or not authorized_at
             or dt.datetime.fromisoformat(authorized_at.replace('Z', '+00:00')).tzinfo is None):
         raise ValueError('An explicit dated and bounded staged recovery authorization is required')
@@ -48,6 +50,8 @@ def make_policy(root: Path, plan: dict, delays: list[int], *, authorized_at: str
         policy.update(schema_version=4, quarantine_uncertain_submissions=True)
     if generic_mars_retry_enabled:
         policy.update(schema_version=5, generic_mars_retry_enabled=True)
+    if ads_retry_enabled:
+        policy.update(schema_version=6, ads_retry_enabled=True)
     return policy
 
 
@@ -61,7 +65,8 @@ def load_policy(root: Path, plan: dict) -> dict | None:
                            deleted_order_retry_limit=data.get('deleted_order_retry_limit',0),
                            continue_other_weeks_when_blocked=data.get('continue_other_weeks_when_blocked',False),
                            quarantine_uncertain_submissions=data.get('quarantine_uncertain_submissions',False),
-                           generic_mars_retry_enabled=data.get('generic_mars_retry_enabled',False))
+                           generic_mars_retry_enabled=data.get('generic_mars_retry_enabled',False),
+                           ads_retry_enabled=data.get('ads_retry_enabled',False))
     if data != expected:
         raise ValueError('Weekly staged recovery authorization or signed-plan identity changed')
     return data

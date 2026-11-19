@@ -113,6 +113,26 @@ def _drain_saved(config, root, plan, weeks, account, client, secret, state):
     return None
 
 
+def _reconcile_history(config, root, plan, weeks, account, client, secret, state, *, allow_submit):
+    from climate_download.cams.submission import reconcile_due, uncertain_groups
+
+    for week in weeks:
+        for key in week['inits']:
+            folder = config.output_dir/SOURCE/key[:8]/(key[8:]+'z')
+            if ((folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file()
+                    or not uncertain_groups(folder, key) or allocation.owner(config, root, plan, key) != account):
+                continue
+            cycle = int(key[8:])
+            scoped = config.model_copy(update={'cycle_accounts': {**config.cycle_accounts, cycle: account}})
+            result = reconcile_due(scoped, folder, key, client=client, secret=secret, allow_submit=allow_submit)
+            if result:
+                if result['status'] in ('original_recovered', 'replacement_submitted', 'already_resumed'):
+                    return {**state, **result, 'week': week['id']}
+                state['submission_recovery_check'] = result
+                return None
+    return None
+
+
 def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, account: str | None = None,
          expected_sha256=None) -> dict:
     if (cycle is None) == (account is None) or cycle is not None and cycle not in (0, 12):
@@ -135,6 +155,7 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
     policy = load_policy(root, plan)
     if policy and (policy.get('deleted_order_retry_limit',0) != operational.deleted_order_retry_limit
                    or policy.get('generic_mars_retry_enabled',False) != operational.generic_mars_retry_enabled
+                   or policy.get('ads_retry_enabled', False) != operational.ads_retry_enabled
                    or policy.get('retry_window_seconds') != operational.mars_count_retry_window_seconds
                    or policy['retry_delays_seconds'] != operational.mars_count_retry_delays_seconds
                    or policy['max_replacements_per_init'] != operational.mars_count_retry_limit):
@@ -153,13 +174,22 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
                                            'mars_count_retry_delays_seconds': None,
                                            'mars_count_retry_window_seconds': None,
                                            'generic_mars_retry_enabled': False,
+                                           'ads_retry_enabled': False,
                                            'deleted_order_retry_limit': 0})
+    if config.ads_retry_enabled:
+        from climate_download.cams.retry_activation import load
+        config._retry_activations = load(root)
     if shutil.disk_usage(operational.output_dir)[2] < 50 * 1024**3:
         return {**state, 'status': 'waiting_for_disk_space'}
     client, secret, active = None, '', None
     if pooled:
         config._realtime_config = operational
         if priority:
+            if config.ads_retry_enabled:
+                recovered = _reconcile_history(config, root, plan, weeks, lane_account, client, secret, state,
+                                               allow_submit=False)
+                if recovered:
+                    return {**recovered, 'priority_inits': priority}
             drained = _drain_saved(config, root, plan, weeks, lane_account, client, secret, state)
             return ({**drained, 'priority_inits': priority} if drained else
                     {**state, 'status': 'waiting_for_realtime', 'priority_inits': priority})
@@ -173,11 +203,21 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
                 raise ValueError('Active ADS order belongs to an already accepted week')
         except Exception as error:
             if client is not None:
+                if config.ads_retry_enabled:
+                    recovered = _reconcile_history(config, root, plan, weeks, lane_account, client, secret, state,
+                                                   allow_submit=False)
+                    if recovered:
+                        return recovered
                 drained = _drain_saved(config, root, plan, weeks, lane_account, client, secret, state)
                 if drained:
                     return drained
             return {**state, 'status': 'waiting_for_account', 'reason': 'active_order_or_metadata_unverified',
                     'error': safe_error(error, secret)}
+        if config.ads_retry_enabled and active is None:
+            recovered = _reconcile_history(config, root, plan, weeks, lane_account, client, secret, state,
+                                           allow_submit=True)
+            if recovered:
+                return recovered
     quarantine = (policy or {}).get('quarantine_uncertain_submissions', False)
     uncertain_phases = {'submitting', 'submission_uncertain'}
     quarantined = []
@@ -275,11 +315,11 @@ def tick(operational: CamsConfig, root: Path, cycle: int | None = None, *, accou
                     saved = json.loads(path.read_text())
                     kind = (saved.get('failure_diagnostic') or {}).get('kind')
                     old_count_failure = (saved.get('phase') in ('retry_wait','remote_failed')
-                                         and kind in ('mars_field_count_mismatch', 'mars_runtime_error'))
+                                         and kind in ('mars_field_count_mismatch', 'mars_runtime_error', 'ads_job_failed'))
                     retained_gap = ((policy or {}).get('continue_other_weeks_when_blocked')
                                     and (saved.get('phase') in ('remote_failed','validation_failed')
                                          or saved.get('deleted_recovery')
-                                         or (kind in ('mars_field_count_mismatch','mars_runtime_error')
+                                         or (kind in ('mars_field_count_mismatch','mars_runtime_error','ads_job_failed')
                                              and saved.get('previous_attempts')
                                              and saved.get('phase') != 'complete')
                                          or (quarantine and saved.get('phase') in uncertain_phases)))

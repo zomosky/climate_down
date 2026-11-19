@@ -11,7 +11,7 @@ import time
 from climate_download.cams.catalogue import DATASET, GROUPS, SOURCE, request_for, request_variables
 from climate_download.cams.client import PreflightRejected, create_client, preflight, transfer
 from climate_download.cams.config import CamsConfig
-from climate_download.cams.grib import publish, validate, verify_published
+from climate_download.cams.grib import manifest_path, publish, validate, verify_published
 from climate_download.cams.ranges import RangeIdentityError
 from climate_download.cams import recovery
 from climate_download.cams import deleted
@@ -59,10 +59,12 @@ def _submit_once(folder, state, request, client, secret):
             raise ValueError('ADS returned a previously failed request ID; inspect the submission')
     except Exception as error:
         state.update(phase='submission_uncertain', error=safe_error(error, secret))
+        state['submission_error_http_status'] = getattr(getattr(error, 'response', None), 'status_code', None)
         save(folder/'state.json', state)
         raise BlockedRequestError('ADS submit uncertain; inspect receipt and recover original ID') from None
     state.update(request_id=request_id, phase='submitted', submitted_at=now())
-    for field in ('error', 'retry_due_at', 'retry_wait_reason', 'remote_status', 'server_timestamps'):
+    for field in ('error', 'retry_due_at', 'retry_wait_reason', 'remote_status', 'server_timestamps',
+                  'submission_error_http_status'):
         state.pop(field, None)
     save(folder/'state.json', state)
 
@@ -292,7 +294,7 @@ def group_tick(config: CamsConfig, folder: Path, date: str, cycle: int, group: s
                 return False
         if retrying:
             priority = (newer_live_due(config, f'{date}{cycle:02d}', cycle)
-                        if (state.get('failure_diagnostic') or {}).get('kind') == 'mars_runtime_error' else None)
+                        if (state.get('failure_diagnostic') or {}).get('kind') in ('mars_runtime_error', 'ads_job_failed') else None)
             if priority:
                 state.update(retry_wait_reason='newer_live_due')
                 save(state_path, state)
@@ -376,6 +378,12 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
     # request_for also validates the date before any filesystem/network work.
     request_for(date, cycle, "hourly")
     folder = config.output_dir / SOURCE / date / f"{cycle:02d}z"
+    reconciled = None
+    if config.ads_retry_enabled and not completed_only and not manifest_path(folder, date, cycle).is_file():
+        from climate_download.cams.submission import reconcile_due
+        reconciled = reconcile_due(config, folder, key, client=client, secret=secret)
+        if reconciled and reconciled['status'] == 'replacement_submitted':
+            return {**reconciled, 'date': date, 'cycle': cycle}
     lock_dir = config.output_dir / SOURCE / ".locks"
     lock_dir.mkdir(parents=True, exist_ok=True)
     with ExitStack() as locks:
@@ -393,8 +401,11 @@ def run_init(config: CamsConfig, date: str, cycle: int, *, client=None, secret: 
         if config.quarantine_uncertain_submissions:
             uncertain = uncertain_groups(folder, key)
             if uncertain:
-                return {'status': 'quarantined', 'date': date, 'cycle': cycle,
-                        'reason': 'submission_uncertain', 'retained': uncertain}
+                result = {'status': 'quarantined', 'date': date, 'cycle': cycle,
+                          'reason': 'submission_uncertain', 'retained': uncertain}
+                if reconciled:
+                    result['submission_recovery_check'] = reconciled
+                return result
         if client is None:
             try:
                 client, secret = create_client(config.account_for(cycle))
@@ -563,6 +574,9 @@ def due_recovery_inits(config: CamsConfig, cycle: int, at) -> list[str]:
         if (folder/f'{key[:8]}_{key[8:]}z_{SOURCE}.manifest.json').is_file():
             continue
         if config.quarantine_uncertain_submissions and uncertain_groups(folder, key):
+            from climate_download.cams.submission import due_candidates
+            if any(due_candidates(config, folder, key, at)):
+                pending.append(key)
             continue
         paths = list((folder/'.cams').glob('*/state.json'))+list((folder/'.cams/hourly/parts').glob('*/state.json'))
         states = [(path, json.loads(path.read_text())) for path in paths]

@@ -127,7 +127,7 @@ def account_ready(client):
     return not client.get_jobs(limit=100, status=['accepted', 'running']).json['jobs']
 
 
-def _exclude_duplicate(client, state, request):
+def _exclude_duplicate(client, state, request, *, known_other_orders=()):
     """Inspect all retained jobs created since the original submission intent."""
     def utc(value):
         stamp = dt.datetime.fromisoformat(value.replace('Z','+00:00'))
@@ -153,7 +153,7 @@ def _exclude_duplicate(client, state, request):
             if utc(job['created']) < floor:
                 return receipt(number+1)
             rid = job['jobID']
-            if rid == state['request_id'] or job.get('processID', DATASET) != DATASET:
+            if rid == state['request_id'] or rid in known_other_orders or job.get('processID', DATASET) != DATASET:
                 continue
             if job.get('status') is not None and job['status'] not in ('accepted','running','successful'):
                 continue
